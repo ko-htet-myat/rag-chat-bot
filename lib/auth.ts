@@ -1,0 +1,17 @@
+import { betterAuth } from "better-auth/minimal";
+import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { db } from "@/db/drizzle";
+import { nextCookies } from "better-auth/next-js";
+
+export const auth = betterAuth({
+  database: drizzleAdapter(db, {
+    provider: "pg", // or "mysql", "sqlite"
+  }),
+  emailAndPassword: {
+    enabled: true,
+  },
+  plugins: [
+    // ...other plugins
+    nextCookies(), // must be the last plugin in the array
+  ],
+});
