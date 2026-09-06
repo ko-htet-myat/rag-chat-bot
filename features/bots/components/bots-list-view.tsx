@@ -11,7 +11,7 @@ export function ListView({
   onDelete,
 }: {
   bots: BotItem[];
-  onDelete: (id: string) => void;
+  onDelete: (bot: BotItem) => void;
 }) {
   return (
     <div className="overflow-hidden rounded-xl bg-card ring-1 ring-border">
@@ -80,7 +80,7 @@ export function ListView({
                     variant="ghost"
                     size="icon"
                     aria-label={`Delete ${bot.name}`}
-                    onClick={() => onDelete(bot.name)}
+                    onClick={() => onDelete(bot)}
                   >
                     <HugeiconsIcon icon={Trash} size={12} />
                   </Button>

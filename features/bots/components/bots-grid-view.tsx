@@ -2,17 +2,11 @@ import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Bot, Plus, Settings, Trash } from "@hugeicons/core-free-icons";
+import { Bot, Plus, Settings } from "@hugeicons/core-free-icons";
 
 import { BotItem, ModelChip, StatusBadge } from "./bots-list-shared";
 
-export function GridView({
-  bots,
-  onDelete,
-}: {
-  bots: BotItem[];
-  onDelete: (id: string) => void;
-}) {
+export function GridView({ bots }: { bots: BotItem[] }) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       {bots.map((bot) => (
@@ -59,19 +53,11 @@ export function GridView({
             <Button
               variant="outline"
               size="sm"
-              render={<Link href={`/bots/${bot.id}/settings`} />}
+              render={<Link href={`/bots/${bot.id}/edit`} />}
               nativeButton={false}
             >
               <HugeiconsIcon icon={Settings} size={12} />
               Settings
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label={`Delete ${bot.name}`}
-              onClick={() => onDelete(bot.name)}
-            >
-              <HugeiconsIcon icon={Trash} size={12} />
             </Button>
           </div>
         </div>

@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { cn } from "cn";
+import { useAction } from "next-safe-action/hooks";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +21,8 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Bot, Grid, List, Plus, Trash } from "@hugeicons/core-free-icons";
+import { Bot, Grid, List, Loading01Icon, Plus, Trash } from "@hugeicons/core-free-icons";
+import { deleteBotAction } from "@/features/bots/actions/delete-bot.action";
 import { GridView } from "./bots-grid-view";
 import { ListView } from "./bots-list-view";
 
@@ -37,8 +41,25 @@ interface BotsListProps {
 }
 
 export function BotsList({ bots }: BotsListProps) {
+  const router = useRouter();
   const [view, setView] = useState<"grid" | "list">("grid");
-  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<BotItem | null>(null);
+
+  const { executeAsync, isExecuting } = useAction(deleteBotAction, {
+    onSuccess: () => {
+      toast.success(`"${deleteTarget?.name ?? "Bot"}" deleted successfully`);
+      setDeleteTarget(null);
+      router.refresh();
+    },
+    onError: ({ error }) => {
+      toast.error(error.serverError || "Failed to delete bot. Please try again.");
+    },
+  });
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    await executeAsync({ id: deleteTarget.id });
+  };
 
   return (
     <div className="mx-auto w-full max-w-300 px-2 py-6 sm:px-6 sm:py-8">
@@ -91,7 +112,7 @@ export function BotsList({ bots }: BotsListProps) {
       {bots.length === 0 ? (
         <EmptyState />
       ) : view === "grid" ? (
-        <GridView bots={bots} onDelete={setDeleteTarget} />
+        <GridView bots={bots} />
       ) : (
         <ListView bots={bots} onDelete={setDeleteTarget} />
       )}
@@ -99,7 +120,9 @@ export function BotsList({ bots }: BotsListProps) {
       {/* Delete dialog */}
       <AlertDialog
         open={deleteTarget !== null}
-        onOpenChange={() => setDeleteTarget(null)}
+        onOpenChange={(open) => {
+          if (!open && !isExecuting) setDeleteTarget(null);
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -110,15 +133,32 @@ export function BotsList({ bots }: BotsListProps) {
             <AlertDialogDescription>
               This will permanently delete{" "}
               <span className="font-medium text-foreground">
-                {deleteTarget}
+                {deleteTarget?.name}
               </span>{" "}
               and all associated configuration, knowledge bases, and
               conversations.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive">Delete</AlertDialogAction>
+            <AlertDialogCancel disabled={isExecuting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isExecuting}
+              onClick={handleDelete}
+            >
+              {isExecuting ? (
+                <>
+                  <HugeiconsIcon
+                    icon={Loading01Icon}
+                    size={12}
+                    className="animate-spin mr-1"
+                  />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
