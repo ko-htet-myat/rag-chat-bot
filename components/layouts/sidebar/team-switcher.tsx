@@ -5,6 +5,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import Image from "next/image";
 
 export function TeamSwitcher() {
   return (
@@ -17,6 +18,12 @@ export function TeamSwitcher() {
           {/* <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
             {activeTeam.logo}
           </div> */}
+          <Image
+            src="/images/inno.png"
+            alt="Inno Chat Bot"
+            width={32}
+            height={32}
+          />
           <div className="grid flex-1 text-left text-sm leading-tight">
             <span className="truncate font-medium">Inno Chat Bot</span>
             <span className="truncate text-xs">Enterprise</span>

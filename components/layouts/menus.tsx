@@ -39,16 +39,16 @@ export const MENUS = [
       },
       {
         title: "Bots",
-        url: "#",
+        url: "/bots",
         icon: <HugeiconsIcon icon={RoboticIcon} strokeWidth={2} />,
         items: [
           {
             title: "List",
-            url: "#",
+            url: "/bots",
           },
           {
             title: "Create",
-            url: "#",
+            url: "/bots/create",
           },
         ],
       },

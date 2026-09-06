@@ -36,7 +36,7 @@ export function StatusBadge({ status }: { status: BotItem["status"] }) {
 export function ModelChip({ model }: { model: string }) {
   const short = model.split("/").pop() ?? model;
   return (
-    <span className="inline-block max-w-50 truncate rounded bg-secondary px-1.5 py-0.5 font-mono text-[11px] text-primary">
+    <span className="inline-block max-w-50 truncate rounded bg-secondary px-1.5 py-0.5 text-[11px] text-primary">
       {short}
     </span>
   );
