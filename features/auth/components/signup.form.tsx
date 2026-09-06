@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod/v4";
 import { toast } from "sonner";
 
 import { signUp } from "@/lib/auth-client";
@@ -25,23 +24,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-
-const signUpSchema = z
-  .object({
-    name: z.string().min(2, "Name must be at least 2 characters"),
-    email: z.email("Please enter a valid email address"),
-    password: z
-      .string()
-      .min(8, "Password must be at least 8 characters")
-      .max(128, "Password must be at most 128 characters"),
-    confirmPassword: z.string().min(1, "Please confirm your password"),
-  })
-  .refine((val) => val.password === val.confirmPassword, {
-    message: "Passwords do not match",
-    path: ["confirmPassword"],
-  });
-
-type SignUpValues = z.infer<typeof signUpSchema>;
+import { signUpSchema, SignUpValues } from "../validations";
 
 export function SignUpForm({ ...props }: React.ComponentProps<typeof Card>) {
   const router = useRouter();
@@ -158,7 +141,9 @@ export function SignUpForm({ ...props }: React.ComponentProps<typeof Card>) {
                   {form.formState.errors.confirmPassword.message}
                 </p>
               ) : (
-                <FieldDescription>Please confirm your password.</FieldDescription>
+                <FieldDescription>
+                  Please confirm your password.
+                </FieldDescription>
               )}
             </Field>
             <FieldGroup>

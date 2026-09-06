@@ -15,6 +15,13 @@
       "when": 1788507204066,
       "tag": "0001_careful_kitty_pryde",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788674776561,
+      "tag": "0002_gray_ronan",
+      "breakpoints": true
     }
   ]
 }

@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod/v4";
 import { toast } from "sonner";
 
 import { cn } from "cn";
@@ -26,13 +25,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-
-const signInSchema = z.object({
-  email: z.email("Please enter a valid email address"),
-  password: z.string().min(1, "Password is required"),
-});
-
-type SignInValues = z.infer<typeof signInSchema>;
+import { signInSchema, SignInValues } from "../validations";
 
 export function SignInForm({
   className,
@@ -135,7 +128,8 @@ export function SignInForm({
                   Login with Google
                 </Button>
                 <FieldDescription className="text-center">
-                  Don&apos;t have an account? <Link href="/sign-up">Sign up</Link>
+                  Don&apos;t have an account?{" "}
+                  <Link href="/sign-up">Sign up</Link>
                 </FieldDescription>
               </Field>
             </FieldGroup>
