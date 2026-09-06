@@ -36,27 +36,20 @@ export function BotTestChatTab({
   const [conversationId, setConversationId] = useState<string | null>(
     initialConversationId || null,
   );
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [
+    {
+      id: "welcome-message",
+      role: "assistant",
+      content: `Hi! I'm the ${bot.name}. How can I help you today?`,
+      timestamp: new Date().toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+      }),
+    },
+  ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-
-  // Initialize with greeting if empty
-  useEffect(() => {
-    if (messages.length === 0) {
-      setMessages([
-        {
-          id: "welcome-message",
-          role: "assistant",
-          content: `Hi! I'm the ${bot.name}. How can I help you today?`,
-          timestamp: new Date().toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-          }),
-        },
-      ]);
-    }
-  }, [bot.name]);
 
   // Scroll to bottom on new messages
   useEffect(() => {

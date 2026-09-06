@@ -3,7 +3,13 @@ import type { NextRequest } from "next/server";
 
 const SESSION_COOKIE = "better-auth.session_token";
 
-const publicPaths = ["/sign-in", "/sign-up", "/api/auth"];
+const publicPaths = [
+  "/sign-in",
+  "/sign-up",
+  "/api/auth",
+  "/widget.js",
+  "/api/widget",
+];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;

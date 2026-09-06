@@ -79,7 +79,7 @@ export const MENUS = [
     items: [
       {
         title: "Widget",
-        url: "#",
+        url: "/widget",
         icon: <HugeiconsIcon icon={SmsCodeIcon} strokeWidth={2} />,
       },
       {
