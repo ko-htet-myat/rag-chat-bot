@@ -35,6 +35,9 @@ export function WidgetView({
     initialConfig.position,
   );
   const [themeColor, setThemeColor] = useState(initialConfig.themeColor);
+  const [allowedOrigins, setAllowedOrigins] = useState(
+    initialConfig.allowedOrigins,
+  );
   const publicKey = initialConfig.publicKey;
 
 
@@ -78,6 +81,7 @@ export function WidgetView({
       welcomeMessage: welcomeMessage.trim() || "Hi there! How can I help you today? 👋",
       position,
       themeColor: themeColor.trim(),
+      allowedOrigins,
     });
   };
 
@@ -109,6 +113,8 @@ export function WidgetView({
           onPositionChange={setPosition}
           themeColor={themeColor}
           onThemeColorChange={setThemeColor}
+          allowedOrigins={allowedOrigins}
+          onAllowedOriginsChange={setAllowedOrigins}
           onSubmit={handleSubmit}
           isExecuting={isExecuting}
         />

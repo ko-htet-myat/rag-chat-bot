@@ -15,6 +15,14 @@ export const saveWidgetConfigSchema = z.object({
   themeColor: z
     .string()
     .regex(/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Must be a valid hex color (e.g. #6366f1)"),
+  allowedOrigins: z
+    .array(
+      z
+        .string()
+        .min(1, "Origin cannot be empty")
+        .max(255, "Origin must be 255 characters or fewer"),
+    )
+    .max(20, "You can add up to 20 allowed origins"),
 });
 
 export type SaveWidgetConfigInput = z.infer<typeof saveWidgetConfigSchema>;

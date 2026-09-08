@@ -33,6 +33,7 @@ export const saveWidgetConfigAction = authClient
           color: parsedInput.themeColor,
           displayName: parsedInput.displayName,
         },
+        allowedOrigins: parsedInput.allowedOrigins,
         updatedAt: new Date(),
       })
       .where(eq(widgetConfigs.botId, parsedInput.botId))

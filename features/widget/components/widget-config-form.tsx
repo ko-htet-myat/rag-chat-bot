@@ -2,9 +2,10 @@
 
 import React, { useRef } from "react";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Tick01Icon } from "@hugeicons/core-free-icons";
+import { Tick01Icon, Cancel01Icon } from "@hugeicons/core-free-icons";
 import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { NativeSelect } from "@/components/ui/native-select";
 import type { BotOption } from "../types";
@@ -24,6 +25,8 @@ interface WidgetConfigFormProps {
   onPositionChange: (pos: "bottom-right" | "bottom-left") => void;
   themeColor: string;
   onThemeColorChange: (color: string) => void;
+  allowedOrigins: string[];
+  onAllowedOriginsChange: (origins: string[]) => void;
   onSubmit: (e: React.FormEvent) => void;
   isExecuting: boolean;
 }
@@ -42,10 +45,13 @@ export function WidgetConfigForm({
   onPositionChange,
   themeColor,
   onThemeColorChange,
+  allowedOrigins,
+  onAllowedOriginsChange,
   onSubmit,
   isExecuting,
 }: WidgetConfigFormProps) {
   const colorInputRef = useRef<HTMLInputElement>(null);
+  const [originInput, setOriginInput] = React.useState("");
 
   const handleHexChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = e.target.value;
@@ -53,6 +59,21 @@ export function WidgetConfigForm({
       val = `#${val}`;
     }
     onThemeColorChange(val);
+  };
+
+  const addOrigin = (e?: React.SyntheticEvent) => {
+    e?.preventDefault();
+    const origin = originInput.trim().replace(/\/$/, "");
+    if (!origin) return;
+    if (allowedOrigins.some((o) => o.toLowerCase() === origin.toLowerCase())) {
+      return;
+    }
+    onAllowedOriginsChange([...allowedOrigins, origin]);
+    setOriginInput("");
+  };
+
+  const removeOrigin = (origin: string) => {
+    onAllowedOriginsChange(allowedOrigins.filter((o) => o !== origin));
   };
 
   return (
@@ -212,7 +233,66 @@ export function WidgetConfigForm({
         </div>
       </div>
 
-      {/* 7. Save Configuration button */}
+      {/* 7. Allowed Origins */}
+      <div className="space-y-2">
+        <label
+          htmlFor="allowed-origin"
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Allowed Origins
+        </label>
+        <p className="text-xs text-muted-foreground/80">
+          List of website origins allowed to embed this widget. Leave empty to
+          allow all origins. Supports wildcards (e.g. *.example.com). localhost
+          is always allowed.
+        </p>
+        <div className="flex gap-2">
+          <Input
+            id="allowed-origin"
+            value={originInput}
+            onChange={(e) => setOriginInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addOrigin(e);
+              }
+            }}
+            placeholder="https://example.com"
+            disabled={isExecuting}
+            className="bg-[#0e101a] border-border/70 text-sm"
+          />
+          <Button
+            type="button"
+            variant="outline"
+            onClick={addOrigin}
+            disabled={isExecuting || !originInput.trim()}
+            className="shrink-0 bg-[#0e101a] border-border/70 text-muted-foreground hover:text-foreground hover:bg-[#141624]"
+          >
+            Add
+          </Button>
+        </div>
+        {allowedOrigins.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {allowedOrigins.map((origin) => (
+              <Badge key={origin} variant="outline">
+                {origin}
+                <button
+                  type="button"
+                  onClick={() => removeOrigin(origin)}
+                  disabled={isExecuting}
+                  aria-label={`Remove ${origin}`}
+                  className="ml-1 cursor-pointer text-muted-foreground transition-colors hover:text-destructive disabled:cursor-not-allowed"
+                >
+                  <span className="sr-only">Remove {origin}</span>
+                  <HugeiconsIcon icon={Cancel01Icon} size={12} className="pointer-events-none" />
+                </button>
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 8. Save Configuration button */}
       <div className="pt-2">
         <Button
           type="submit"
