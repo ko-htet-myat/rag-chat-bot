@@ -54,16 +54,16 @@ export const MENUS = [
       },
       {
         title: "Knowledge Base",
-        url: "#",
+        url: "/knowledge",
         icon: <HugeiconsIcon icon={BookOpen02Icon} strokeWidth={2} />,
         items: [
           {
             title: "List",
-            url: "#",
+            url: "/knowledge",
           },
           {
             title: "Create",
-            url: "#",
+            url: "/knowledge/create",
           },
         ],
       },
