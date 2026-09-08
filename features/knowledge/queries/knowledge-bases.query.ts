@@ -57,3 +57,15 @@ export async function getKnowledgeBases(
     botName: row.botName,
   }));
 }
+
+export async function getUserBots(userId: string) {
+  return db
+    .select({
+      id: bots.id,
+      name: bots.name,
+    })
+    .from(bots)
+    .where(eq(bots.userId, userId))
+    .orderBy(desc(bots.updatedAt));
+}
+

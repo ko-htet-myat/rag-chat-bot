@@ -7,3 +7,9 @@ export interface KnowledgeBaseItem {
   botId: string;
   botName: string;
 }
+
+export interface UserBotOption {
+  id: string;
+  name: string;
+}
+
