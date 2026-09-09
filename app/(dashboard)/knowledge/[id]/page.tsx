@@ -1,22 +1,25 @@
 import { headers } from "next/headers";
 import { notFound, redirect } from "next/navigation";
 import Link from "next/link";
-import { and, eq } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowLeft01Icon,
   Book02Icon,
   File01Icon,
   Briefcase01Icon,
-  CloudUploadIcon,
   Clock01Icon,
 } from "@hugeicons/core-free-icons";
 
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { bots, documents, knowledgeBases } from "@/db/schema";
-import { Button } from "@/components/ui/button";
+import { bots, documentChunks, documents, knowledgeBases } from "@/db/schema";
 import { Card } from "@/components/ui/card";
+import {
+  DocumentUploader,
+  DocumentListTable,
+  type DocumentRowItem,
+} from "@/features/knowledge/components";
 
 interface KnowledgeDetailPageProps {
   params: Promise<{ id: string }>;
@@ -41,7 +44,7 @@ export default async function KnowledgeDetailPage({
   const session = await auth.api.getSession({ headers: await headers() });
 
   if (!session) {
-    redirect("/sign-in");
+    redirect(`/sign-in?callbackURL=/knowledge/${id}`);
   }
 
   const [row] = await db
@@ -57,11 +60,35 @@ export default async function KnowledgeDetailPage({
     notFound();
   }
 
-  const docs = await db
-    .select()
+  const rawDocs = await db
+    .select({
+      id: documents.id,
+      name: documents.name,
+      sourceType: documents.sourceType,
+      mimeType: documents.mimeType,
+      size: documents.size,
+      status: documents.status,
+      createdAt: documents.createdAt,
+      chunksCount: count(documentChunks.id),
+    })
     .from(documents)
+    .leftJoin(documentChunks, eq(documentChunks.documentId, documents.id))
     .where(eq(documents.knowledgeBaseId, id))
-    .orderBy(documents.createdAt);
+    .groupBy(documents.id)
+    .orderBy(desc(documents.createdAt));
+
+  const formattedDocs: DocumentRowItem[] = rawDocs.map((doc) => ({
+    id: doc.id,
+    name: doc.name,
+    sourceType: doc.sourceType,
+    mimeType: doc.mimeType,
+    size: doc.size,
+    status: doc.status,
+    chunksCount: Number(doc.chunksCount),
+    createdAt: doc.createdAt.toLocaleDateString(),
+  }));
+
+  const totalChunks = formattedDocs.reduce((sum, d) => sum + d.chunksCount, 0);
 
   return (
     <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8 space-y-8">
@@ -97,8 +124,17 @@ export default async function KnowledgeDetailPage({
             href={`/bots/${row.bot.id}`}
             className="inline-flex items-center gap-2 rounded-xl border border-border bg-card px-3.5 py-2 text-xs font-medium text-foreground transition-colors hover:bg-muted"
           >
-            <HugeiconsIcon icon={Briefcase01Icon} size={14} className="text-muted-foreground" />
-            <span>Target Bot: <strong className="text-foreground font-semibold">{row.bot.name}</strong></span>
+            <HugeiconsIcon
+              icon={Briefcase01Icon}
+              size={14}
+              className="text-muted-foreground"
+            />
+            <span>
+              Target Bot:{" "}
+              <strong className="text-foreground font-semibold">
+                {row.bot.name}
+              </strong>
+            </span>
           </Link>
         </div>
       </div>
@@ -111,8 +147,13 @@ export default async function KnowledgeDetailPage({
               <HugeiconsIcon icon={File01Icon} size={16} />
             </div>
             <div>
-              <div className="text-xs text-muted-foreground">Total Documents</div>
-              <div className="text-lg font-semibold text-foreground">{docs.length}</div>
+              <div className="text-xs text-muted-foreground">Documents</div>
+              <div className="text-lg font-semibold text-foreground">
+                {formattedDocs.length}{" "}
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({totalChunks} chunks)
+                </span>
+              </div>
             </div>
           </div>
         </Card>
@@ -124,7 +165,9 @@ export default async function KnowledgeDetailPage({
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Connected Bot</div>
-              <div className="text-sm font-semibold text-foreground truncate max-w-[160px]">{row.bot.name}</div>
+              <div className="text-sm font-semibold text-foreground truncate max-w-[160px]">
+                {row.bot.name}
+              </div>
             </div>
           </div>
         </Card>
@@ -136,82 +179,35 @@ export default async function KnowledgeDetailPage({
             </div>
             <div>
               <div className="text-xs text-muted-foreground">Last Updated</div>
-              <div className="text-xs font-semibold text-foreground">{row.kb.updatedAt.toLocaleDateString()}</div>
+              <div className="text-xs font-semibold text-foreground">
+                {row.kb.updatedAt.toLocaleDateString()}
+              </div>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Document Upload & Management Section */}
-      <div className="space-y-4">
+      {/* Document Upload Section */}
+      <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold tracking-tight text-foreground">
-              Documents & Content
-            </h2>
-            <p className="text-xs text-muted-foreground">
-              Files and data sources used to ground responses from {row.bot.name}.
-            </p>
-          </div>
+          <h2 className="text-base font-semibold tracking-tight text-foreground">
+            Upload Documents
+          </h2>
         </div>
+        <DocumentUploader knowledgeBaseId={row.kb.id} />
+      </div>
 
-        {/* Upload Dropzone Card */}
-        <div className="flex flex-col items-center justify-center rounded-2xl border-2 border-dashed border-border/80 bg-card/20 p-8 text-center transition-all hover:border-indigo-500/40 hover:bg-card/40">
-          <div className="mb-3 flex size-12 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-400">
-            <HugeiconsIcon icon={CloudUploadIcon} size={24} />
-          </div>
-          <div className="text-sm font-semibold text-foreground">
-            Upload documents to this knowledge base
-          </div>
-          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-            Drag and drop your PDF, Markdown, TXT, or DOCX files here, or click to browse.
-          </p>
-          <div className="mt-4 flex items-center gap-2">
-            <Button size="sm" className="rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white">
-              <HugeiconsIcon icon={CloudUploadIcon} size={14} />
-              Upload Files
-            </Button>
-          </div>
+      {/* Existing documents list */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-semibold tracking-tight text-foreground">
+            Uploaded Content ({formattedDocs.length})
+          </h2>
         </div>
-
-        {/* Existing documents list */}
-        {docs.length > 0 && (
-          <div className="overflow-hidden rounded-xl border border-border bg-card">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-border bg-muted/40 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                <tr>
-                  <th className="px-4 py-3">Document</th>
-                  <th className="px-4 py-3">Source</th>
-                  <th className="px-4 py-3">Status</th>
-                  <th className="px-4 py-3">Created</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border">
-                {docs.map((doc) => (
-                  <tr key={doc.id} className="hover:bg-muted/30 transition-colors">
-                    <td className="px-4 py-3 font-medium text-foreground">
-                      <div className="flex items-center gap-2">
-                        <HugeiconsIcon icon={File01Icon} size={15} className="text-muted-foreground" />
-                        <span>{doc.name}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground capitalize">
-                      {doc.sourceType}
-                    </td>
-                    <td className="px-4 py-3 text-xs">
-                      <span className="inline-flex items-center rounded-md bg-emerald-500/10 px-2 py-0.5 text-emerald-400">
-                        {doc.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-xs text-muted-foreground">
-                      {doc.createdAt.toLocaleDateString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <DocumentListTable
+          documents={formattedDocs}
+          knowledgeBaseId={row.kb.id}
+        />
       </div>
     </div>
   );
