@@ -6,10 +6,10 @@ import { and, eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { bots, documentChunks, documents, knowledgeBases } from "@/db/schema";
+import { embedText } from "@/ai/runtime/embeddings";
 import {
   chunkText,
   extractTextFromFile,
-  generateEmbedding,
 } from "@/lib/documents/process-document";
 
 export interface UploadDocumentResult {
@@ -87,7 +87,7 @@ export async function uploadDocumentAction(
     // 3. Generate embeddings and insert chunks into document_chunks
     for (let i = 0; i < chunks.length; i++) {
       const chunkContent = chunks[i];
-      const embedding = await generateEmbedding(chunkContent);
+      const embedding = await embedText(chunkContent);
 
       await db.insert(documentChunks).values({
         documentId: doc.id,

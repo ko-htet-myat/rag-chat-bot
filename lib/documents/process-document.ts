@@ -96,45 +96,6 @@ export function chunkText(
   return chunks.filter((c) => c.trim().length > 5);
 }
 
-export async function generateEmbedding(text: string): Promise<number[]> {
-  const openaiKey = process.env.OPENAI_API_KEY;
-  if (openaiKey) {
-    try {
-      const res = await fetch("https://api.openai.com/v1/embeddings", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${openaiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "text-embedding-3-small",
-          input: text.slice(0, 8000),
-        }),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.data?.[0]?.embedding) {
-          return data.data[0].embedding;
-        }
-      }
-    } catch {
-      // Fallback below
-    }
-  }
-
-  // Fallback: 1536-dimensional normalized vector
-  const vector = new Array(1536).fill(0);
-  for (let i = 0; i < text.length; i++) {
-    const code = text.charCodeAt(i);
-    const index = (code * 31 + i) % 1536;
-    vector[index] += 1;
-  }
-  const magnitude =
-    Math.sqrt(vector.reduce((sum, val) => sum + val * val, 0)) || 1;
-  return vector.map((v) => Number((v / magnitude).toFixed(6)));
-}
-
 export function formatFileSize(bytes: number | null | undefined): string {
   if (!bytes || bytes === 0) return "0 B";
   const k = 1024;
