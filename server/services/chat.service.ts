@@ -86,9 +86,21 @@ async function loadHistory(conversationId: string): Promise<ModelMessage[]> {
   }));
 }
 
-async function retrieveKnowledgeBase(botId: string, message: string) {
+async function retrieveKnowledgeBase(
+  botId: string,
+  message: string,
+  history: ModelMessage[],
+) {
   try {
-    return await retrieve(botId, message);
+    const recentHistory = history
+      .slice(-6)
+      .map((entry) => `${entry.role}: ${entry.content}`)
+      .join("\n");
+    const retrievalQuery = recentHistory
+      ? `Previous conversation:\n${recentHistory}\n\nCurrent question:\n${message}`
+      : message;
+
+    return await retrieve(botId, retrievalQuery);
   } catch {
     return [] as Awaited<ReturnType<typeof retrieve>>;
   }
@@ -123,12 +135,10 @@ export const ChatService = {
       incomingConvId,
     );
 
-    const [history, chunks] = await Promise.all([
-      incomingConvId
-        ? loadHistory(convId)
-        : Promise.resolve<ModelMessage[]>([]),
-      retrieveKnowledgeBase(botId, message),
-    ]);
+    const history = incomingConvId
+      ? await loadHistory(convId)
+      : ([] as ModelMessage[]);
+    const chunks = await retrieveKnowledgeBase(botId, message, history);
 
     const userMsg = await saveMessage(convId, "user", message);
 
@@ -175,12 +185,10 @@ export const ChatService = {
       incomingConvId,
     );
 
-    const [history, chunks] = await Promise.all([
-      incomingConvId
-        ? loadHistory(convId)
-        : Promise.resolve<ModelMessage[]>([]),
-      retrieveKnowledgeBase(botId, message),
-    ]);
+    const history = incomingConvId
+      ? await loadHistory(convId)
+      : ([] as ModelMessage[]);
+    const chunks = await retrieveKnowledgeBase(botId, message, history);
 
     const userMsg = await saveMessage(convId, "user", message);
 

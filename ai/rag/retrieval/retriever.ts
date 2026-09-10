@@ -24,5 +24,9 @@ export async function retrieve(
   threshold = 0.5,
 ): Promise<VectorSearchResult[]> {
   const embedding = await embedText(query);
-  return vectorSearch(botId, embedding, topK, threshold);
+  const matches = await vectorSearch(botId, embedding, topK, threshold);
+  if (matches.length > 0 || threshold !== 0.5) return matches;
+
+  // Multilingual queries can score lower against an English knowledge base.
+  return vectorSearch(botId, embedding, topK, 0.3);
 }
