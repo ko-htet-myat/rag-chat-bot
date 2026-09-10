@@ -1,4 +1,4 @@
-import { eq, asc, inArray } from "drizzle-orm";
+import { eq, asc, desc, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { bots, conversations, messages, widgetConfigs } from "@/db/schema";
 import { buildRagSystemPrompt } from "@/ai/prompts/system";
@@ -95,14 +95,18 @@ async function saveMessage(
   return msg;
 }
 
-async function loadHistory(conversationId: string): Promise<ModelMessage[]> {
+async function loadHistory(
+  conversationId: string,
+  limit = 12,
+): Promise<ModelMessage[]> {
   const rows = await db
     .select()
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
-    .orderBy(asc(messages.createdAt));
+    .orderBy(desc(messages.createdAt))
+    .limit(limit);
 
-  return rows.map((m) => ({
+  return rows.reverse().map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.content,
   }));
@@ -111,19 +115,16 @@ async function loadHistory(conversationId: string): Promise<ModelMessage[]> {
 async function retrieveKnowledgeBase(
   botId: string,
   message: string,
-  history: ModelMessage[],
+  options?: { history?: ModelMessage[]; botName?: string },
 ) {
   try {
-    const recentHistory = history
-      .slice(-6)
-      .map((entry) => `${entry.role}: ${entry.content}`)
-      .join("\n");
-    const retrievalQuery = recentHistory
-      ? `Previous conversation:\n${recentHistory}\n\nCurrent question:\n${message}`
-      : message;
-
-    return await retrieve(botId, retrievalQuery);
-  } catch {
+    return await retrieve(botId, message, 5, 0.5, options);
+  } catch (error) {
+    console.error("Widget knowledge-base retrieval failed", {
+      botId,
+      message,
+      error,
+    });
     return [] as Awaited<ReturnType<typeof retrieve>>;
   }
 }
@@ -166,8 +167,8 @@ export const WidgetService = {
 
   /**
    * Streams a widget chat reply.
-   * RAG runs in parallel with history load — chunks enrich the system prompt
-   * before the LLM is called.
+   * RAG runs in parallel with history load and user message saving
+   * before the LLM is called to minimize TTFT.
    */
   async streamReply(params: WidgetChatParams): Promise<{
     response: Response;
@@ -191,9 +192,12 @@ export const WidgetService = {
     const history = incomingConvId
       ? await loadHistory(convId)
       : ([] as ModelMessage[]);
-    const chunks = await retrieveKnowledgeBase(bot.id, message, history);
 
-    const userMsg = await saveMessage(convId, "user", message);
+    // RAG retrieval and user message persistence run in parallel
+    const [chunks, userMsg] = await Promise.all([
+      retrieveKnowledgeBase(bot.id, message, { history, botName: bot.name }),
+      saveMessage(convId, "user", message),
+    ]);
 
     const systemPrompt = buildRagSystemPrompt(bot, chunks);
     const coreMessages: ModelMessage[] = [
@@ -243,9 +247,12 @@ export const WidgetService = {
     const history = incomingConvId
       ? await loadHistory(convId)
       : ([] as ModelMessage[]);
-    const chunks = await retrieveKnowledgeBase(bot.id, message, history);
 
-    const userMsg = await saveMessage(convId, "user", message);
+    // RAG retrieval and user message persistence run in parallel
+    const [chunks, userMsg] = await Promise.all([
+      retrieveKnowledgeBase(bot.id, message, { history, botName: bot.name }),
+      saveMessage(convId, "user", message),
+    ]);
 
     const systemPrompt = buildRagSystemPrompt(bot, chunks);
     const coreMessages: ModelMessage[] = [

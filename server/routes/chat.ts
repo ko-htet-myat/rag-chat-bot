@@ -7,11 +7,10 @@ export const chatRoutes = new Hono();
 /**
  * POST /api/chat/test
  *
- * Internal dashboard endpoint — returns JSON (not a stream) so the
- * BotTestChatTab component can call response.json() and read
- * { conversationId, assistantMessage: { id, content } }.
+ * Internal dashboard endpoint — streams text by default with X-Conversation-Id header.
+ * If body contains { stream: false }, falls back to returning full JSON payload.
  *
- * Thin route: auth → validate → ChatService.generateReply → return JSON.
+ * Thin route: auth → validate → ChatService.streamReply / generateReply.
  * Zero DB calls, zero AI SDK imports, zero fetch() calls here.
  */
 chatRoutes.post("/test", async (c) => {
@@ -23,29 +22,47 @@ chatRoutes.post("/test", async (c) => {
     return c.json({ error: "Missing botId or message" }, 400);
   }
 
-  const { botId, message, conversationId } = body as {
+  const { botId, message, conversationId, stream = true } = body as {
     botId: string;
     message: string;
     conversationId?: string;
+    stream?: boolean;
   };
 
   try {
-    const result = await ChatService.generateReply({
+    if (stream === false) {
+      const result = await ChatService.generateReply({
+        botId,
+        userId: session.user.id,
+        message,
+        conversationId,
+      });
+
+      return c.json({
+        success: true,
+        conversationId: result.conversationId,
+        assistantMessage: {
+          id: result.assistantMessageId,
+          content: result.text,
+        },
+      });
+    }
+
+    const { response, conversationId: convId } = await ChatService.streamReply({
       botId,
       userId: session.user.id,
       message,
       conversationId,
     });
 
-    // Return the shape the BotTestChatTab component expects:
-    // data.conversationId, data.assistantMessage.id, data.assistantMessage.content
-    return c.json({
-      success: true,
-      conversationId: result.conversationId,
-      assistantMessage: {
-        id: result.assistantMessageId,
-        content: result.text,
-      },
+    const headers = new Headers(response.headers);
+    headers.set("X-Conversation-Id", convId);
+    headers.set("Access-Control-Expose-Headers", "X-Conversation-Id");
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers,
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Internal server error";

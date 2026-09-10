@@ -52,7 +52,11 @@
   var apiBase = "";
   if (explicitApiBase) {
     apiBase = explicitApiBase.replace(/\/+$/, "");
-  } else if (scriptTag && scriptTag.src && /^https?:\/\//i.test(scriptTag.src)) {
+  } else if (
+    scriptTag &&
+    scriptTag.src &&
+    /^https?:\/\//i.test(scriptTag.src)
+  ) {
     try {
       apiBase = new URL(scriptTag.src).origin;
     } catch {
@@ -62,8 +66,7 @@
     apiBase = window.location.origin;
   }
 
-  var isDebug =
-    scriptTag && scriptTag.getAttribute("data-debug") === "true";
+  var isDebug = scriptTag && scriptTag.getAttribute("data-debug") === "true";
 
   // 2. Fetch widget configuration
   fetch(apiBase + "/api/widget/config?key=" + encodeURIComponent(publicKey))
@@ -309,19 +312,57 @@
           if (!res.ok) {
             throw new Error("HTTP " + res.status);
           }
-          return res.json();
-        })
-        .then(function (data) {
+          var nextConversationId = res.headers.get("X-Conversation-Id");
+          if (nextConversationId) {
+            conversationId = nextConversationId;
+          }
+
+          if (!res.body) {
+            throw new Error("Streaming is not supported by this browser");
+          }
+
+          // Remove typing indicator as soon as assistant response starts
           if (typingIndicator && typingIndicator.parentNode) {
             typingIndicator.parentNode.removeChild(typingIndicator);
+            typingIndicator = null;
           }
-          if (data.conversationId) {
-            conversationId = data.conversationId;
+
+          var reader = res.body.getReader();
+          var decoder = new TextDecoder();
+          var assistantMessage = appendMessage("assistant", "");
+          var assistantBubble = assistantMessage.firstChild;
+          var responseText = "";
+          var scrollScheduled = false;
+
+          function scheduleScroll() {
+            if (!scrollScheduled) {
+              scrollScheduled = true;
+              window.requestAnimationFrame(function () {
+                messagesArea.scrollTop = messagesArea.scrollHeight;
+                scrollScheduled = false;
+              });
+            }
           }
-          if (data.assistantMessage && data.assistantMessage.content) {
-            appendMessage("assistant", data.assistantMessage.content);
-          } else if (data.error) {
-            appendMessage("assistant", "Error: " + data.error);
+
+          function readChunk() {
+            return reader.read().then(function (result) {
+              if (result.done) {
+                messagesArea.scrollTop = messagesArea.scrollHeight;
+                return;
+              }
+
+              responseText += decoder.decode(result.value, { stream: true });
+              assistantBubble.textContent = responseText;
+              scheduleScroll();
+              return readChunk();
+            });
+          }
+
+          return readChunk();
+        })
+        .then(function () {
+          if (typingIndicator && typingIndicator.parentNode) {
+            typingIndicator.parentNode.removeChild(typingIndicator);
           }
         })
         .catch(function (err) {

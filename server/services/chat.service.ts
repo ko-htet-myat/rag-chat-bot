@@ -1,4 +1,4 @@
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { bots, conversations, messages } from "@/db/schema";
 import { buildRagSystemPrompt } from "@/ai/prompts/system";
@@ -73,14 +73,18 @@ async function saveMessage(
   return msg;
 }
 
-async function loadHistory(conversationId: string): Promise<ModelMessage[]> {
+async function loadHistory(
+  conversationId: string,
+  limit = 12,
+): Promise<ModelMessage[]> {
   const rows = await db
     .select()
     .from(messages)
     .where(eq(messages.conversationId, conversationId))
-    .orderBy(asc(messages.createdAt));
+    .orderBy(desc(messages.createdAt))
+    .limit(limit);
 
-  return rows.map((m) => ({
+  return rows.reverse().map((m) => ({
     role: m.role as "user" | "assistant",
     content: m.content,
   }));
@@ -89,19 +93,16 @@ async function loadHistory(conversationId: string): Promise<ModelMessage[]> {
 async function retrieveKnowledgeBase(
   botId: string,
   message: string,
-  history: ModelMessage[],
+  options?: { history?: ModelMessage[]; botName?: string },
 ) {
   try {
-    const recentHistory = history
-      .slice(-6)
-      .map((entry) => `${entry.role}: ${entry.content}`)
-      .join("\n");
-    const retrievalQuery = recentHistory
-      ? `Previous conversation:\n${recentHistory}\n\nCurrent question:\n${message}`
-      : message;
-
-    return await retrieve(botId, retrievalQuery);
-  } catch {
+    return await retrieve(botId, message, 5, 0.5, options);
+  } catch (error) {
+    console.error("Knowledge-base retrieval failed", {
+      botId,
+      message,
+      error,
+    });
     return [] as Awaited<ReturnType<typeof retrieve>>;
   }
 }
@@ -119,6 +120,9 @@ export const ChatService = {
    * Streams a reply. RAG is run first: the query is embedded, relevant
    * chunks are retrieved from the bot's knowledge base, and the system
    * prompt is enriched with that context before calling the LLM.
+   *
+   * Database updates and RAG retrieval are run in parallel via Promise.all
+   * to minimize Time To First Token (TTFT).
    */
   async streamReply(params: SendMessageParams): Promise<{
     response: Response;
@@ -138,9 +142,12 @@ export const ChatService = {
     const history = incomingConvId
       ? await loadHistory(convId)
       : ([] as ModelMessage[]);
-    const chunks = await retrieveKnowledgeBase(botId, message, history);
 
-    const userMsg = await saveMessage(convId, "user", message);
+    // RAG retrieval and user message persistence run in parallel
+    const [chunks, userMsg] = await Promise.all([
+      retrieveKnowledgeBase(botId, message, { history, botName: bot.name }),
+      saveMessage(convId, "user", message),
+    ]);
 
     // Always use RAG prompt — it degrades gracefully when chunks is empty
     const systemPrompt = buildRagSystemPrompt(bot, chunks);
@@ -171,7 +178,7 @@ export const ChatService = {
   },
 
   /**
-   * Non-streaming reply (used by the dashboard test chat).
+   * Non-streaming reply (used by backward-compatible JSON callers).
    * Same RAG flow as streamReply.
    */
   async generateReply(params: SendMessageParams): Promise<SendMessageResult> {
@@ -188,9 +195,12 @@ export const ChatService = {
     const history = incomingConvId
       ? await loadHistory(convId)
       : ([] as ModelMessage[]);
-    const chunks = await retrieveKnowledgeBase(botId, message, history);
 
-    const userMsg = await saveMessage(convId, "user", message);
+    // RAG retrieval and user message persistence run in parallel
+    const [chunks, userMsg] = await Promise.all([
+      retrieveKnowledgeBase(botId, message, { history, botName: bot.name }),
+      saveMessage(convId, "user", message),
+    ]);
 
     const systemPrompt = buildRagSystemPrompt(bot, chunks);
     const coreMessages: ModelMessage[] = [
