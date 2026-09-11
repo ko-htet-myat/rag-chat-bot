@@ -1,8 +1,19 @@
 import { Hono } from "hono";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { ChatService } from "@/server/services/chat.service";
+import { consumeRateLimit, getClientAddress } from "@/server/rate-limit";
 
 export const chatRoutes = new Hono();
+
+const chatRequestSchema = z.object({
+  botId: z.string().uuid(),
+  message: z.string().trim().min(1).max(4_000),
+  conversationId: z.string().uuid().optional(),
+  stream: z.boolean().default(true),
+});
+
+const conversationIdSchema = z.string().uuid();
 
 /**
  * POST /api/chat/test
@@ -17,17 +28,19 @@ chatRoutes.post("/test", async (c) => {
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!session) return c.json({ error: "Unauthorized" }, 401);
 
-  const body = await c.req.json().catch(() => null);
-  if (!body?.botId || !body?.message) {
-    return c.json({ error: "Missing botId or message" }, 400);
+  if (
+    !consumeRateLimit(
+      `chat:${session.user.id}:${getClientAddress(c.req.raw.headers)}`,
+    )
+  ) {
+    return c.json({ error: "Too many requests" }, 429);
   }
 
-  const { botId, message, conversationId, stream = true } = body as {
-    botId: string;
-    message: string;
-    conversationId?: string;
-    stream?: boolean;
-  };
+  const body = await c.req.json().catch(() => null);
+  const parsed = chatRequestSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: "Invalid chat request" }, 400);
+
+  const { botId, message, conversationId, stream } = parsed.data;
 
   try {
     if (stream === false) {
@@ -66,7 +79,9 @@ chatRoutes.post("/test", async (c) => {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Internal server error";
-    if (msg === "Bot not found") return c.json({ error: msg }, 404);
+    if (msg === "Bot not found" || msg === "Conversation not found") {
+      return c.json({ error: msg }, 404);
+    }
     return c.json({ error: msg }, 500);
   }
 });
@@ -81,7 +96,10 @@ chatRoutes.get("/messages/:conversationId", async (c) => {
   if (!session) return c.json({ error: "Unauthorized" }, 401);
 
   const conversationId = c.req.param("conversationId");
+  if (!conversationIdSchema.safeParse(conversationId).success) {
+    return c.json({ error: "Invalid conversation ID" }, 400);
+  }
 
-  const msgs = await ChatService.getMessages(conversationId);
+  const msgs = await ChatService.getMessages(conversationId, session.user.id);
   return c.json({ success: true, messages: msgs });
 });

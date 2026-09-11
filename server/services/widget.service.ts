@@ -1,4 +1,4 @@
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { bots, conversations, messages, widgetConfigs } from "@/db/schema";
 import { buildRagSystemPrompt } from "@/ai/prompts/system";
@@ -29,21 +29,15 @@ function isOriginAllowed(
   allowedOrigins: string[],
   requestOrigin: string | undefined,
 ): boolean {
-  if (!allowedOrigins.length || !requestOrigin) return true;
-
-  const isLocalhost =
-    requestOrigin.startsWith("http://localhost:") ||
-    requestOrigin.startsWith("http://127.0.0.1:") ||
-    requestOrigin === "http://localhost" ||
-    requestOrigin === "http://127.0.0.1";
-
-  if (isLocalhost) return true;
+  if (!allowedOrigins.length) return true;
+  if (!requestOrigin) return false;
 
   return allowedOrigins.some(
     (origin) =>
       origin === requestOrigin ||
       origin === "*" ||
-      requestOrigin.endsWith(`.${origin.replace(/^\*\./, "")}`),
+      (origin.startsWith("*.") &&
+        requestOrigin.endsWith(`.${origin.slice(2)}`)),
   );
 }
 
@@ -62,10 +56,27 @@ async function getOrCreateWidgetConversation(
   conversationId?: string,
 ): Promise<string> {
   if (conversationId) {
+    const [conversation] = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.botId, botId),
+        ),
+      );
+
+    if (!conversation) throw new Error("Conversation not found");
+
     await db
       .update(conversations)
       .set({ updatedAt: new Date() })
-      .where(eq(conversations.id, conversationId));
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.botId, botId),
+        ),
+      );
     return conversationId;
   }
 

@@ -3,6 +3,7 @@
 import { headers } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { bots, documentChunks, documents, knowledgeBases } from "@/db/schema";
@@ -11,6 +12,9 @@ import {
   chunkText,
   extractTextFromFile,
 } from "@/lib/documents/process-document";
+
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const ALLOWED_EXTENSIONS = new Set([".pdf", ".txt", ".md", ".csv", ".json"]);
 
 export interface UploadDocumentResult {
   success: boolean;
@@ -30,14 +34,42 @@ export async function uploadDocumentAction(
     return { success: false, error: "Unauthorized. Please sign in." };
   }
 
-  const knowledgeBaseId = formData.get("knowledgeBaseId") as string;
-  const file = formData.get("file") as File | null;
+  const knowledgeBaseIdValue = formData.get("knowledgeBaseId");
+  const fileValue = formData.get("file");
+  const knowledgeBaseId =
+    typeof knowledgeBaseIdValue === "string" ? knowledgeBaseIdValue : "";
+  const file = fileValue instanceof File ? fileValue : null;
 
   if (!knowledgeBaseId || !file) {
     return {
       success: false,
       error: "Knowledge base ID and file are required.",
     };
+  }
+
+  if (!z.string().uuid().safeParse(knowledgeBaseId).success) {
+    return { success: false, error: "Invalid knowledge base ID." };
+  }
+
+  const lastDot = file.name.lastIndexOf(".");
+  const extension = lastDot >= 0 ? file.name.slice(lastDot).toLowerCase() : "";
+  if (!ALLOWED_EXTENSIONS.has(extension)) {
+    return {
+      success: false,
+      error: "Unsupported file type. Upload PDF, TXT, MD, CSV, or JSON files.",
+    };
+  }
+
+  if (file.size <= 0 || file.size > MAX_UPLOAD_BYTES) {
+    return {
+      success: false,
+      error: "File must be between 1 byte and 10 MB.",
+    };
+  }
+
+  const safeFileName = file.name.split(/[\\/]/).pop()?.trim() ?? "";
+  if (!safeFileName || safeFileName.length > 255) {
+    return { success: false, error: "Invalid file name." };
   }
 
   // Verify ownership: knowledgeBase belongs to a bot owned by the authenticated user
@@ -68,7 +100,7 @@ export async function uploadDocumentAction(
       .insert(documents)
       .values({
         knowledgeBaseId,
-        name: file.name,
+        name: safeFileName,
         sourceType: "upload",
         mimeType: file.type || "application/octet-stream",
         size: file.size,
@@ -77,11 +109,11 @@ export async function uploadDocumentAction(
       .returning();
 
     // 2. Extract text and split into chunks
-    const rawText = extractTextFromFile(buffer, file.name, file.type);
+    const rawText = extractTextFromFile(buffer, safeFileName, file.type);
     const chunks = chunkText(rawText);
 
     if (chunks.length === 0) {
-      chunks.push(`Document: ${file.name}`);
+      chunks.push(`Document: ${safeFileName}`);
     }
 
     // 3. Generate embeddings and insert chunks into document_chunks
@@ -95,7 +127,7 @@ export async function uploadDocumentAction(
         chunkIndex: i,
         embedding,
         metadata: {
-          fileName: file.name,
+          fileName: safeFileName,
           chunkIndex: i,
           totalChunks: chunks.length,
         },

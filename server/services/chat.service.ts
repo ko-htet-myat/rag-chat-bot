@@ -40,10 +40,29 @@ async function getOrCreateConversation(
   conversationId?: string,
 ): Promise<string> {
   if (conversationId) {
+    const [conversation] = await db
+      .select({ id: conversations.id })
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.botId, botId),
+          eq(conversations.userId, userId),
+        ),
+      );
+
+    if (!conversation) throw new Error("Conversation not found");
+
     await db
       .update(conversations)
       .set({ updatedAt: new Date() })
-      .where(eq(conversations.id, conversationId));
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.botId, botId),
+          eq(conversations.userId, userId),
+        ),
+      );
     return conversationId;
   }
 
@@ -233,11 +252,20 @@ export const ChatService = {
     };
   },
 
-  async getMessages(conversationId: string) {
+  async getMessages(conversationId: string, userId: string) {
     return db
-      .select()
+      .select({ message: messages })
       .from(messages)
-      .where(eq(messages.conversationId, conversationId))
-      .orderBy(asc(messages.createdAt));
+      .innerJoin(conversations, eq(messages.conversationId, conversations.id))
+      .innerJoin(bots, eq(conversations.botId, bots.id))
+      .where(
+        and(
+          eq(messages.conversationId, conversationId),
+          eq(conversations.userId, userId),
+          eq(bots.userId, userId),
+        ),
+      )
+      .orderBy(asc(messages.createdAt))
+      .then((rows) => rows.map(({ message }) => message));
   },
 };
