@@ -84,7 +84,7 @@ export const MENUS = [
       },
       {
         title: "Settings",
-        url: "#",
+        url: "/settings",
         icon: <HugeiconsIcon icon={Settings05Icon} strokeWidth={2} />,
       },
     ],
