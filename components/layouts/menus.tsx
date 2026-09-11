@@ -69,7 +69,7 @@ export const MENUS = [
       },
       {
         title: "Conversations",
-        url: "#",
+        url: "/conversations",
         icon: <HugeiconsIcon icon={Message} strokeWidth={2} />,
       },
     ],

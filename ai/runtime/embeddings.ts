@@ -3,6 +3,7 @@ import { openrouterProvider } from "./provider";
 
 /** Default embedding model used for vector search throughout the app. */
 const EMBEDDING_MODEL = "openai/text-embedding-3-small";
+// const EMBEDDING_MODEL = "google/gemini-embedding-001";
 
 /**
  * Embeds a single text string into a numeric vector.
