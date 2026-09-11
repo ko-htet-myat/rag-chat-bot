@@ -9,7 +9,7 @@ export const chatRoutes = new Hono();
 const chatRequestSchema = z.object({
   botId: z.string().uuid(),
   message: z.string().trim().min(1).max(4_000),
-  conversationId: z.string().uuid().optional(),
+  conversationId: z.string().uuid().nullish(),
   stream: z.boolean().default(true),
 });
 
@@ -40,7 +40,13 @@ chatRoutes.post("/test", async (c) => {
   const parsed = chatRequestSchema.safeParse(body);
   if (!parsed.success) return c.json({ error: "Invalid chat request" }, 400);
 
-  const { botId, message, conversationId, stream } = parsed.data;
+  const {
+    botId,
+    message,
+    conversationId: rawConversationId,
+    stream,
+  } = parsed.data;
+  const conversationId = rawConversationId ?? undefined;
 
   try {
     if (stream === false) {

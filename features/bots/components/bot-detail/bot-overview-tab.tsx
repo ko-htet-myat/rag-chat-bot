@@ -24,7 +24,7 @@ export function BotOverviewTab({
             Total Conversations
           </div>
           <div className="mt-3 text-3xl font-bold tracking-tight text-foreground">
-            {metrics.totalConversations.toLocaleString()}
+            {metrics.totalConversations}
           </div>
         </div>
 
@@ -42,7 +42,7 @@ export function BotOverviewTab({
             Knowledge Docs
           </div>
           <div className="mt-3 text-3xl font-bold tracking-tight text-foreground">
-            {metrics.knowledgeDocsCount.toLocaleString()}
+            {metrics.knowledgeDocsCount}
           </div>
         </div>
       </div>
@@ -79,7 +79,8 @@ export function BotOverviewTab({
                     {conv.title}
                   </div>
                   <div className="mt-0.5 text-xs text-muted-foreground">
-                    {conv.messageCount} {conv.messageCount === 1 ? "message" : "messages"}
+                    {conv.messageCount}{" "}
+                    {conv.messageCount === 1 ? "message" : "messages"}
                   </div>
                 </div>
                 <div className="text-xs text-muted-foreground">
