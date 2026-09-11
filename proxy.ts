@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const SESSION_COOKIE = "better-auth.session_token";
+const SESSION_COOKIE_NAMES = [
+  "better-auth.session_token",
+  "__Secure-better-auth.session_token",
+];
 
 const publicPaths = [
   "/sign-in",
@@ -13,9 +16,12 @@ const publicPaths = [
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const sessionToken = request.cookies.get(SESSION_COOKIE)?.value;
+  const sessionToken = SESSION_COOKIE_NAMES.some((cookieName) =>
+    request.cookies.has(cookieName),
+  );
 
-  const isAuthPath = pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
+  const isAuthPath =
+    pathname.startsWith("/sign-in") || pathname.startsWith("/sign-up");
 
   if (isAuthPath) {
     if (sessionToken) {
@@ -25,7 +31,7 @@ export function proxy(request: NextRequest) {
   }
 
   const isPublicPath = publicPaths.some(
-    (path) => pathname === path || pathname.startsWith(`${path}/`)
+    (path) => pathname === path || pathname.startsWith(`${path}/`),
   );
 
   if (isPublicPath) {
