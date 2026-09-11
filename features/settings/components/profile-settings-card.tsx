@@ -12,10 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { updateProfileAction } from "../actions/update-profile.action";
-import {
-  updateProfileSchema,
-  type UpdateProfileInput,
-} from "../validations";
+import { updateProfileSchema, type UpdateProfileInput } from "../validations";
 
 interface ProfileSettingsCardProps {
   user: {
@@ -34,7 +31,7 @@ export function ProfileSettingsCard({ user }: ProfileSettingsCardProps) {
   const {
     register,
     handleSubmit,
-    watch,
+    getValues,
     formState: { errors },
   } = useForm<UpdateProfileInput>({
     resolver: zodResolver(updateProfileSchema),
@@ -64,7 +61,7 @@ export function ProfileSettingsCard({ user }: ProfileSettingsCardProps) {
     await executeAsync(values);
   };
 
-  const initials = (watch("name") || user.name || "U")
+  const initials = (getValues("name") || user.name || "U")
     .split(" ")
     .map((n) => n[0])
     .join("")
@@ -109,7 +106,10 @@ export function ProfileSettingsCard({ user }: ProfileSettingsCardProps) {
 
         {showAvatarInput && (
           <Field className="space-y-1.5 animate-in fade-in-50 duration-200">
-            <FieldLabel htmlFor="profile-image" className="text-xs font-medium text-muted-foreground">
+            <FieldLabel
+              htmlFor="profile-image"
+              className="text-xs font-medium text-muted-foreground"
+            >
               Avatar Image URL
             </FieldLabel>
             <Input
@@ -130,7 +130,10 @@ export function ProfileSettingsCard({ user }: ProfileSettingsCardProps) {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Full Name Field */}
           <Field className="space-y-1.5">
-            <FieldLabel htmlFor="full-name" className="text-xs font-medium text-muted-foreground">
+            <FieldLabel
+              htmlFor="full-name"
+              className="text-xs font-medium text-muted-foreground"
+            >
               Full Name
             </FieldLabel>
             <Input
@@ -147,7 +150,10 @@ export function ProfileSettingsCard({ user }: ProfileSettingsCardProps) {
 
           {/* Email Address Field (Disabled/Read-only) */}
           <Field className="space-y-1.5">
-            <FieldLabel htmlFor="email-address" className="text-xs font-medium text-muted-foreground">
+            <FieldLabel
+              htmlFor="email-address"
+              className="text-xs font-medium text-muted-foreground"
+            >
               Email Address
             </FieldLabel>
             <Input

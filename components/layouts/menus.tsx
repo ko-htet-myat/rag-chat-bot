@@ -1,14 +1,8 @@
 import {
-  LayoutBottomIcon,
-  AudioWave01Icon,
-  CommandIcon,
   ComputerTerminalIcon,
   RoboticIcon,
   BookOpen02Icon,
   Settings05Icon,
-  CropIcon,
-  PieChartIcon,
-  MapsIcon,
   Message,
   SmsCodeIcon,
 } from "@hugeicons/core-free-icons";

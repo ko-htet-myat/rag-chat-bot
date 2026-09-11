@@ -50,7 +50,9 @@ export function BotTestChatTab({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(
+    Boolean(initialConversationId),
+  );
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -70,10 +72,8 @@ export function BotTestChatTab({
   // Fetch messages when initialConversationId changes
   useEffect(() => {
     if (!initialConversationId) return;
-    setConversationId(initialConversationId);
 
     let isMounted = true;
-    setIsLoadingHistory(true);
 
     fetch(`/api/chat/messages/${initialConversationId}`)
       .then((res) => {
@@ -82,7 +82,11 @@ export function BotTestChatTab({
       })
       .then((data) => {
         if (!isMounted) return;
-        if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+        if (
+          data.messages &&
+          Array.isArray(data.messages) &&
+          data.messages.length > 0
+        ) {
           setMessages(
             data.messages.map(
               (m: {
@@ -382,7 +386,9 @@ export function BotTestChatTab({
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={isStreaming ? "Generating response..." : "Type your message..."}
+          placeholder={
+            isStreaming ? "Generating response..." : "Type your message..."
+          }
           disabled={isLoading || isStreaming}
           className="flex-1 rounded-lg border border-border/70 bg-background/80 px-4 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-indigo-500 focus:outline-none disabled:opacity-60"
         />

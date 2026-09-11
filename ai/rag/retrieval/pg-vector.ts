@@ -1,6 +1,6 @@
 import { sql, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
-import { documentChunks, documents, knowledgeBases } from "@/db/schema";
+import { documents, knowledgeBases } from "@/db/schema";
 
 export interface VectorSearchResult {
   chunkId: string;
@@ -122,7 +122,8 @@ export async function keywordSearch(
 
   // Build weighted score formula
   const scoreParts = normalized.map(
-    (k) => sql`(CASE WHEN content ILIKE ${`%${k.term}%`} THEN ${k.weight} ELSE 0.0 END)`,
+    (k) =>
+      sql`(CASE WHEN content ILIKE ${`%${k.term}%`} THEN ${k.weight} ELSE 0.0 END)`,
   );
   const combinedScore = sql.join(scoreParts, sql` + `);
 
@@ -178,7 +179,10 @@ export async function hybridSearch(
     const existing = resultMap.get(match.chunkId);
     if (existing) {
       // Chunk matched both dense vector AND exact keyword -> strongly boost score
-      existing.similarity = Math.max(existing.similarity + 0.35, match.similarity);
+      existing.similarity = Math.max(
+        existing.similarity + 0.35,
+        match.similarity,
+      );
     } else {
       resultMap.set(match.chunkId, match);
     }
@@ -188,5 +192,3 @@ export async function hybridSearch(
     .sort((a, b) => b.similarity - a.similarity)
     .slice(0, topK);
 }
-
-

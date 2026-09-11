@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import {
   bots,
@@ -192,7 +192,7 @@ export async function getBotDetail(
       model: bot.model,
       temperature: bot.temperature,
       maxTokens: bot.maxTokens,
-      status: widgetEnabled ?? true ? "active" : "inactive",
+      status: (widgetEnabled ?? true) ? "active" : "inactive",
       createdAt: bot.createdAt,
       updatedAt: bot.updatedAt,
     },

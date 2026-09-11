@@ -1,6 +1,5 @@
 "use client";
 
-import { useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -50,43 +49,38 @@ interface ConversationsListProps {
 }
 
 export function ConversationsList({ data }: ConversationsListProps) {
-  const { register, watch } = useForm<FilterValues>({
+  const { register, getValues } = useForm<FilterValues>({
     resolver: zodResolver(filterSchema),
     defaultValues: { search: "", botId: "all" },
   });
 
-  const search = watch("search");
-  const botId = watch("botId");
+  const search = getValues("search");
+  const botId = getValues("botId");
 
-  const filtered = useMemo(() => {
-    let items = data.conversations;
+  let items = data.conversations;
 
-    if (botId !== "all") {
-      items = items.filter((c) => c.botId === botId);
-    }
+  if (botId !== "all") {
+    items = items.filter((c) => c.botId === botId);
+  }
 
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      items = items.filter(
-        (c) =>
-          c.title.toLowerCase().includes(q) ||
-          c.botName.toLowerCase().includes(q),
-      );
-    }
+  if (search.trim()) {
+    const q = search.trim().toLowerCase();
+    items = items.filter(
+      (c) =>
+        c.title.toLowerCase().includes(q) ||
+        c.botName.toLowerCase().includes(q),
+    );
+  }
 
-    return items;
-  }, [data.conversations, botId, search]);
+  const filtered = items;
 
   // Group by date label
-  const grouped = useMemo(() => {
-    const map = new Map<ConversationItem["group"], ConversationItem[]>();
-    for (const item of filtered) {
-      const arr = map.get(item.group) ?? [];
-      arr.push(item);
-      map.set(item.group, arr);
-    }
-    return map;
-  }, [filtered]);
+  const grouped = new Map<ConversationItem["group"], ConversationItem[]>();
+  for (const item of filtered) {
+    const arr = grouped.get(item.group) ?? [];
+    arr.push(item);
+    grouped.set(item.group, arr);
+  }
 
   return (
     <div className="mx-auto w-full max-w-300 px-2 py-6 sm:px-6 sm:py-8">

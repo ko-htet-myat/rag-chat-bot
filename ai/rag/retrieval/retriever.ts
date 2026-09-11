@@ -1,7 +1,6 @@
 import { embedText } from "@/ai/runtime/embeddings";
 import {
   hybridSearch,
-  vectorSearch,
   type VectorSearchResult,
   type WeightedKeyword,
 } from "./pg-vector";
@@ -15,13 +14,13 @@ import type { ModelMessage } from "ai";
  * with English document chunks (e.g. "ဆက်သွယ်" -> contact, phone, hotline).
  */
 const BILINGUAL_INTENT_MAP: Record<string, string[]> = {
-  "ဆက်သွယ်": ["contact", "call", "phone", "email", "hotline"],
-  "ဖုန်း": ["phone", "hotline", "call", "mobile", "tel"],
-  "အီးမေးလ်": ["email", "mail"],
-  "လိပ်စာ": ["address", "location", "visit", "office"],
-  "ရုံး": ["office", "building", "location", "address"],
-  "စျေးနှုန်း": ["price", "pricing", "cost", "fee", "rate"],
-  "ဝန်ဆောင်မှု": ["service", "services", "solution", "solutions"],
+  ဆက်သွယ်: ["contact", "call", "phone", "email", "hotline"],
+  ဖုန်း: ["phone", "hotline", "call", "mobile", "tel"],
+  အီးမေးလ်: ["email", "mail"],
+  လိပ်စာ: ["address", "location", "visit", "office"],
+  ရုံး: ["office", "building", "location", "address"],
+  စျေးနှုန်း: ["price", "pricing", "cost", "fee", "rate"],
+  ဝန်ဆောင်မှု: ["service", "services", "solution", "solutions"],
 };
 
 export interface RetrieveOptions {
@@ -119,7 +118,9 @@ export async function retrieve(
 
   // 2. Expand with bilingual intent synonyms (e.g. "ဆက်သွယ်" -> "contact", "phone")
   const intentKeywords: string[] = [];
-  for (const [burmeseTerm, englishTerms] of Object.entries(BILINGUAL_INTENT_MAP)) {
+  for (const [burmeseTerm, englishTerms] of Object.entries(
+    BILINGUAL_INTENT_MAP,
+  )) {
     if (query.includes(burmeseTerm)) {
       intentKeywords.push(...englishTerms);
     }
@@ -160,5 +161,3 @@ export async function retrieve(
 
   return matches;
 }
-
-

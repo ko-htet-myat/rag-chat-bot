@@ -1,4 +1,4 @@
-import { eq, asc, desc, inArray } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { bots, conversations, messages, widgetConfigs } from "@/db/schema";
 import { buildRagSystemPrompt } from "@/ai/prompts/system";
