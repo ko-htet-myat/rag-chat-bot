@@ -358,7 +358,7 @@
               }
 
               responseText += decoder.decode(result.value, { stream: true });
-              assistantBubble.textContent = responseText;
+              assistantBubble.innerHTML = renderMarkdown(responseText);
               scheduleScroll();
               return readChunk();
             });
@@ -385,6 +385,106 @@
         });
     };
 
+    function renderMarkdown(markdown) {
+      if (!markdown) return "";
+
+      var normalized = String(markdown).replace(/\r\n/g, "\n").trim();
+      if (!normalized) return "";
+
+      var blocks = normalized.split(/\n\s*\n/);
+      var htmlBlocks = [];
+
+      for (var i = 0; i < blocks.length; i++) {
+        var block = blocks[i].trim();
+        if (!block) continue;
+
+        if (block.startsWith("```")) {
+          var codeMatch = block.match(/^```[\s\S]*?\n([\s\S]*?)\n?```$/);
+          var code = codeMatch ? codeMatch[1] : block.slice(3, -3);
+          htmlBlocks.push(
+            '<pre style="margin:0;white-space:pre-wrap;overflow-x:auto;background:#0b1020;border-radius:8px;padding:10px 12px;border:1px solid rgba(255,255,255,0.08);"><code>' +
+              escapeHtml(code).replace(/\n/g, "<br>") +
+              "</code></pre>",
+          );
+          continue;
+        }
+
+        if (/^#{1,6}\s+/.test(block)) {
+          var level = Math.min(6, (block.match(/^#+/) || [""])[0].length);
+          var heading = block.replace(/^#{1,6}\s+/, "");
+          htmlBlocks.push(
+            "<h" +
+              level +
+              ' style="margin:0 0 8px 0;font-size:13px;font-weight:700;line-height:1.4;">' +
+              formatInline(heading) +
+              "</h" +
+              level +
+              ">",
+          );
+          continue;
+        }
+
+        if (/^(?:[-*])\s+/.test(block)) {
+          var listItems = block.split(/\n/).map(function (line) {
+            return line.replace(/^(?:[-*])\s+/, "");
+          });
+          htmlBlocks.push(
+            '<ul style="margin:0 0 8px 0;padding-left:18px;">' +
+              listItems
+                .map(function (item) {
+                  return (
+                    '<li style="margin:4px 0;">' + formatInline(item) + "</li>"
+                  );
+                })
+                .join("") +
+              "</ul>",
+          );
+          continue;
+        }
+
+        if (/^\d+\.\s+/.test(block)) {
+          var orderedItems = block.split(/\n/).map(function (line) {
+            return line.replace(/^\d+\.\s+/, "");
+          });
+          htmlBlocks.push(
+            '<ol style="margin:0 0 8px 0;padding-left:18px;">' +
+              orderedItems
+                .map(function (item) {
+                  return (
+                    '<li style="margin:4px 0;">' + formatInline(item) + "</li>"
+                  );
+                })
+                .join("") +
+              "</ol>",
+          );
+          continue;
+        }
+
+        htmlBlocks.push(
+          '<p style="margin:0 0 8px 0;">' + formatInline(block) + "</p>",
+        );
+      }
+
+      return htmlBlocks.join("");
+    }
+
+    function formatInline(text) {
+      var formatted = escapeHtml(text);
+      formatted = formatted
+        .replace(
+          /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g,
+          '<a href="$2" target="_blank" rel="noreferrer noopener">$1</a>',
+        )
+        .replace(
+          /`([^`]+)`/g,
+          '<code style="background:rgba(148,163,184,0.12);padding:2px 6px;border-radius:6px;">$1</code>',
+        )
+        .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+        .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+        .replace(/_(.+?)_/g, "<em>$1</em>");
+      return formatted.replace(/\n/g, "<br>");
+    }
+
     function appendMessage(role, content) {
       var msg = document.createElement("div");
       msg.style.display = "flex";
@@ -399,6 +499,7 @@
       bubble.style.maxWidth = "80%";
       bubble.style.wordBreak = "break-word";
       bubble.style.boxSizing = "border-box";
+      bubble.style.whiteSpace = "normal";
 
       if (role === "user") {
         bubble.style.backgroundColor = themeColor;
@@ -411,7 +512,11 @@
         bubble.style.borderBottomLeftRadius = "2px";
       }
 
-      bubble.textContent = content;
+      if (role === "user") {
+        bubble.textContent = content;
+      } else {
+        bubble.innerHTML = renderMarkdown(content);
+      }
       msg.appendChild(bubble);
       messagesArea.appendChild(msg);
       messagesArea.scrollTop = messagesArea.scrollHeight;
