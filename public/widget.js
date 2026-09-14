@@ -297,20 +297,26 @@
 
       var typingIndicator = appendTypingIndicator();
 
+      var payload = {
+        publicKey: key,
+        message: text,
+      };
+      if (conversationId) {
+        payload.conversationId = conversationId;
+      }
+
       fetch(baseUrl + "/api/widget/chat", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          publicKey: key,
-          message: text,
-          conversationId: conversationId,
-        }),
+        body: JSON.stringify(payload),
       })
         .then(function (res) {
           if (!res.ok) {
-            throw new Error("HTTP " + res.status);
+            return res.text().then(function (body) {
+              throw new Error("HTTP " + res.status + (body ? ": " + body : ""));
+            });
           }
           var nextConversationId = res.headers.get("X-Conversation-Id");
           if (nextConversationId) {

@@ -10,7 +10,7 @@ const publicKeySchema = z.string().trim().min(1).max(128);
 const widgetChatSchema = z.object({
   publicKey: publicKeySchema,
   message: z.string().trim().min(1).max(4_000),
-  conversationId: z.string().uuid().optional(),
+  conversationId: z.string().uuid().nullish(),
 });
 
 // CORS stays in the route — it is transport-level config, not business logic.
@@ -86,6 +86,7 @@ widgetRoutes.post("/chat", async (c) => {
     message,
     conversationId: incomingConversationId,
   } = parsed.data;
+  const conversationId = incomingConversationId ?? undefined;
 
   if (
     !consumeRateLimit(
@@ -96,15 +97,16 @@ widgetRoutes.post("/chat", async (c) => {
   }
 
   try {
-    const { response, conversationId } = await WidgetService.streamReply({
-      publicKey,
-      message,
-      conversationId: incomingConversationId,
-      requestOrigin: c.req.header("origin"),
-    });
+    const { response, conversationId: responseConversationId } =
+      await WidgetService.streamReply({
+        publicKey,
+        message,
+        conversationId,
+        requestOrigin: c.req.header("origin"),
+      });
 
     const headers = new Headers(response.headers);
-    headers.set("X-Conversation-Id", conversationId);
+    headers.set("X-Conversation-Id", responseConversationId);
     headers.set("Access-Control-Expose-Headers", "X-Conversation-Id");
 
     return new Response(response.body, {
@@ -114,6 +116,12 @@ widgetRoutes.post("/chat", async (c) => {
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Internal server error";
+    console.error("Widget chat request failed", {
+      publicKey,
+      messageLength: message.length,
+      conversationId: incomingConversationId,
+      error: err,
+    });
     if (msg === "Widget not found") return c.json({ error: msg }, 404);
     if (msg === "Conversation not found") return c.json({ error: msg }, 404);
     if (msg === "Origin not allowed") return c.json({ error: msg }, 403);
