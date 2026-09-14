@@ -180,7 +180,7 @@ export const ChatService = {
       systemPrompt,
       messages: coreMessages,
       temperature: bot.temperature,
-      maxOutputTokens: bot.maxTokens ?? undefined,
+      maxOutputTokens: bot.maxTokens || 1000,
       onFinish: async ({ text, inputTokens, outputTokens }) => {
         await saveMessage(
           convId,
@@ -232,7 +232,7 @@ export const ChatService = {
       systemPrompt,
       messages: coreMessages,
       temperature: bot.temperature,
-      maxOutputTokens: bot.maxTokens ?? undefined,
+      maxOutputTokens: bot.maxTokens || 1000,
     });
 
     const assistantMsg = await saveMessage(

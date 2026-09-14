@@ -28,7 +28,7 @@ export function streamResponse(params: StreamParams): Response {
     systemPrompt,
     messages,
     temperature,
-    maxOutputTokens,
+    maxOutputTokens = 1000,
     onFinish,
   } = params;
 
@@ -37,7 +37,7 @@ export function streamResponse(params: StreamParams): Response {
     system: systemPrompt,
     messages,
     temperature,
-    maxOutputTokens,
+    maxOutputTokens: maxOutputTokens || 1000,
     onFinish: onFinish
       ? async ({ text, usage }) => {
           await onFinish({

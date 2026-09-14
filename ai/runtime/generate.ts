@@ -25,14 +25,20 @@ export interface GenerateResult {
 export async function generateResponse(
   params: GenerateParams,
 ): Promise<GenerateResult> {
-  const { modelId, systemPrompt, messages, temperature, maxOutputTokens } = params;
+  const {
+    modelId,
+    systemPrompt,
+    messages,
+    temperature,
+    maxOutputTokens = 1000,
+  } = params;
 
   const result = await generateText({
     model: getModel(modelId),
     system: systemPrompt,
     messages,
     temperature,
-    maxOutputTokens,
+    maxOutputTokens: maxOutputTokens || 1000,
   });
 
   return {

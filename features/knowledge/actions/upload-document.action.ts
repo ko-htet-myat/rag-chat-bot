@@ -7,7 +7,7 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { bots, documentChunks, documents, knowledgeBases } from "@/db/schema";
-import { embedText } from "@/ai/runtime/embeddings";
+import { embedManyTexts } from "@/ai/runtime/embeddings";
 import {
   chunkText,
   extractTextFromFile,
@@ -91,6 +91,8 @@ export async function uploadDocumentAction(
     };
   }
 
+  let createdDocId: string | null = null;
+
   try {
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
@@ -108,6 +110,8 @@ export async function uploadDocumentAction(
       })
       .returning();
 
+    createdDocId = doc.id;
+
     // 2. Extract text and split into chunks
     const rawText = extractTextFromFile(buffer, safeFileName, file.type);
     const chunks = chunkText(rawText);
@@ -116,25 +120,25 @@ export async function uploadDocumentAction(
       chunks.push(`Document: ${safeFileName}`);
     }
 
-    // 3. Generate embeddings and insert chunks into document_chunks
-    for (let i = 0; i < chunks.length; i++) {
-      const chunkContent = chunks[i];
-      const embedding = await embedText(chunkContent);
+    // 3. Generate embeddings in batch
+    const embeddings = await embedManyTexts(chunks);
 
-      await db.insert(documentChunks).values({
-        documentId: doc.id,
-        content: chunkContent,
+    // 4. Batch insert chunks into document_chunks
+    const chunkRecords = chunks.map((chunkContent, i) => ({
+      documentId: doc.id,
+      content: chunkContent,
+      chunkIndex: i,
+      embedding: embeddings[i],
+      metadata: {
+        fileName: safeFileName,
         chunkIndex: i,
-        embedding,
-        metadata: {
-          fileName: safeFileName,
-          chunkIndex: i,
-          totalChunks: chunks.length,
-        },
-      });
-    }
+        totalChunks: chunks.length,
+      },
+    }));
 
-    // 4. Update document status to ready
+    await db.insert(documentChunks).values(chunkRecords);
+
+    // 5. Update document status to ready
     await db
       .update(documents)
       .set({ status: "ready", updatedAt: new Date() })
@@ -152,6 +156,19 @@ export async function uploadDocumentAction(
       },
     };
   } catch (err: unknown) {
+    if (createdDocId) {
+      try {
+        await db
+          .update(documents)
+          .set({ status: "failed", updatedAt: new Date() })
+          .where(eq(documents.id, createdDocId));
+        revalidatePath(`/knowledge/${knowledgeBaseId}`);
+        revalidatePath("/knowledge");
+      } catch (cleanupErr) {
+        console.error("Failed to update document status to failed:", cleanupErr);
+      }
+    }
+
     const errorMessage =
       err instanceof Error ? err.message : "Failed to process document";
     return { success: false, error: errorMessage };

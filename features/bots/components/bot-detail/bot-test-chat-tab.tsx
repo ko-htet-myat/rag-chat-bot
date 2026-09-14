@@ -239,6 +239,20 @@ export function BotTestChatTab({
           ),
         );
       }
+
+      if (!accumulatedText.trim()) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === assistantMessageId
+              ? {
+                  ...msg,
+                  content:
+                    "Sorry, no response was generated. Please check your bot settings or API credits.",
+                }
+              : msg,
+          ),
+        );
+      }
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         // User voluntarily aborted — keep partial response

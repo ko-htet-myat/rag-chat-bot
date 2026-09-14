@@ -151,6 +151,12 @@
       launcher.style.transform = "scale(1)";
     };
 
+    var maximizeSvg =
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>';
+    var minimizeSvg =
+      '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/></svg>';
+    var isFullscreen = false;
+
     // Chat Window
     var chatWindow = document.createElement("div");
     chatWindow.style.display = "none";
@@ -172,6 +178,8 @@
     chatWindow.style.border = "1px solid rgba(255,255,255,0.12)";
     chatWindow.style.overflow = "hidden";
     chatWindow.style.boxSizing = "border-box";
+    chatWindow.style.transition =
+      "width 0.2s ease, height 0.2s ease, border-radius 0.2s ease";
 
     // Header
     var header = document.createElement("div");
@@ -182,16 +190,21 @@
     header.style.alignItems = "center";
     header.style.justifyContent = "space-between";
     header.style.boxSizing = "border-box";
+    header.style.flexShrink = "0";
     header.innerHTML =
       '<div style="display:flex;align-items:center;gap:10px;min-width:0;">' +
-      '<div style="width:10px;height:10px;border-radius:5px;background:#10b981;box-shadow:0 0 6px #10b981;shrink:0;"></div>' +
       '<div style="font-weight:600;font-size:15px;letter-spacing:0.2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' +
       escapeHtml(displayName) +
       "</div>" +
       "</div>" +
-      '<button id="inno-chat-close-btn" type="button" style="background:transparent;border:none;color:#fff;cursor:pointer;opacity:0.85;padding:4px;display:flex;align-items:center;justify-content:center;">' +
+      '<div style="display:flex;align-items:center;gap:4px;shrink:0;">' +
+      '<button id="inno-chat-fullscreen-btn" type="button" aria-label="Full screen" title="Full screen" style="background:transparent;border:none;color:#fff;cursor:pointer;opacity:0.85;padding:5px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:opacity 0.2s,background-color 0.2s;">' +
+      maximizeSvg +
+      "</button>" +
+      '<button id="inno-chat-close-btn" type="button" aria-label="Close chat" title="Close" style="background:transparent;border:none;color:#fff;cursor:pointer;opacity:0.85;padding:5px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:opacity 0.2s,background-color 0.2s;">' +
       '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>' +
-      "</button>";
+      "</button>" +
+      "</div>";
 
     // Messages Area
     var messagesArea = document.createElement("div");
@@ -200,9 +213,17 @@
     messagesArea.style.overflowY = "auto";
     messagesArea.style.display = "flex";
     messagesArea.style.flexDirection = "column";
-    messagesArea.style.gap = "12px";
     messagesArea.style.backgroundColor = "#111322";
     messagesArea.style.boxSizing = "border-box";
+
+    var messagesInner = document.createElement("div");
+    messagesInner.style.width = "100%";
+    messagesInner.style.maxWidth = "100%";
+    messagesInner.style.display = "flex";
+    messagesInner.style.flexDirection = "column";
+    messagesInner.style.gap = "12px";
+    messagesInner.style.boxSizing = "border-box";
+    messagesArea.appendChild(messagesInner);
 
     // Add Welcome message
     appendMessage("assistant", welcomeMsg);
@@ -210,11 +231,20 @@
     // Footer / Input Area
     var footer = document.createElement("form");
     footer.style.display = "flex";
-    footer.style.padding = "12px";
+    footer.style.flexDirection = "column";
+    footer.style.alignItems = "center";
+    footer.style.padding = "10px 12px 6px";
     footer.style.backgroundColor = "#161828";
     footer.style.borderTop = "1px solid rgba(255,255,255,0.08)";
-    footer.style.gap = "8px";
     footer.style.boxSizing = "border-box";
+    footer.style.flexShrink = "0";
+
+    var footerInner = document.createElement("div");
+    footerInner.style.display = "flex";
+    footerInner.style.gap = "8px";
+    footerInner.style.width = "100%";
+    footerInner.style.maxWidth = "100%";
+    footerInner.style.boxSizing = "border-box";
 
     var input = document.createElement("input");
     input.type = "text";
@@ -245,8 +275,24 @@
     sendBtn.innerHTML =
       '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="pointer-events:none;"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>';
 
-    footer.appendChild(input);
-    footer.appendChild(sendBtn);
+    footerInner.appendChild(input);
+    footerInner.appendChild(sendBtn);
+
+    var branding = document.createElement("div");
+    branding.style.margin = "6px auto";
+    branding.style.fontSize = "11px";
+    branding.style.color = "#64748b";
+    branding.style.textAlign = "center";
+    branding.style.userSelect = "none";
+    branding.style.width = "100%";
+    branding.style.boxSizing = "border-box";
+    branding.innerHTML =
+      'Powered by <a href="' +
+      escapeHtml(baseUrl) +
+      '" target="_blank" rel="noopener noreferrer" style="color:#818cf8;text-decoration:none;font-weight:500;">Inno Chat</a>';
+
+    footer.appendChild(footerInner);
+    footer.appendChild(branding);
 
     chatWindow.appendChild(header);
     chatWindow.appendChild(messagesArea);
@@ -254,6 +300,110 @@
 
     host.appendChild(chatWindow);
     host.appendChild(launcher);
+
+    var fullscreenBtn = header.querySelector("#inno-chat-fullscreen-btn");
+    var closeBtn = header.querySelector("#inno-chat-close-btn");
+
+    if (fullscreenBtn) {
+      fullscreenBtn.onmouseenter = function () {
+        fullscreenBtn.style.opacity = "1";
+        fullscreenBtn.style.backgroundColor = "rgba(255,255,255,0.15)";
+      };
+      fullscreenBtn.onmouseleave = function () {
+        fullscreenBtn.style.opacity = "0.85";
+        fullscreenBtn.style.backgroundColor = "transparent";
+      };
+    }
+    if (closeBtn) {
+      closeBtn.onmouseenter = function () {
+        closeBtn.style.opacity = "1";
+        closeBtn.style.backgroundColor = "rgba(255,255,255,0.15)";
+      };
+      closeBtn.onmouseleave = function () {
+        closeBtn.style.opacity = "0.85";
+        closeBtn.style.backgroundColor = "transparent";
+      };
+    }
+
+    function setFullscreen(enable) {
+      isFullscreen = Boolean(enable);
+      if (isFullscreen) {
+        chatWindow.style.position = "fixed";
+        chatWindow.style.top = "0";
+        chatWindow.style.left = "0";
+        chatWindow.style.right = "0";
+        chatWindow.style.bottom = "0";
+        chatWindow.style.width = "100vw";
+        chatWindow.style.maxWidth = "100vw";
+        chatWindow.style.height = "100vh";
+        chatWindow.style.maxHeight = "100vh";
+        chatWindow.style.borderRadius = "0";
+        chatWindow.style.border = "none";
+        chatWindow.style.boxShadow = "none";
+        chatWindow.style.zIndex = "2147483647";
+        launcher.style.display = "none";
+        if (fullscreenBtn) {
+          fullscreenBtn.innerHTML = minimizeSvg;
+          fullscreenBtn.setAttribute("aria-label", "Exit full screen");
+          fullscreenBtn.setAttribute("title", "Exit full screen");
+        }
+        messagesInner.style.maxWidth = "800px";
+        messagesInner.style.margin = "0 auto";
+        footerInner.style.maxWidth = "800px";
+        footerInner.style.margin = "0 auto";
+        branding.style.maxWidth = "800px";
+        branding.style.margin = "6px auto";
+      } else {
+        chatWindow.style.position = "absolute";
+        chatWindow.style.top = "";
+        chatWindow.style.bottom = "75px";
+        if (isRight) {
+          chatWindow.style.right = "0";
+          chatWindow.style.left = "";
+        } else {
+          chatWindow.style.left = "0";
+          chatWindow.style.right = "";
+        }
+        chatWindow.style.width = "360px";
+        chatWindow.style.maxWidth = "calc(100vw - 48px)";
+        chatWindow.style.height = "520px";
+        chatWindow.style.maxHeight = "calc(100vh - 120px)";
+        chatWindow.style.borderRadius = "16px";
+        chatWindow.style.border = "1px solid rgba(255,255,255,0.12)";
+        chatWindow.style.boxShadow = "0 16px 40px rgba(0,0,0,0.4)";
+        if (isOpen) {
+          launcher.style.display = "flex";
+        }
+        if (fullscreenBtn) {
+          fullscreenBtn.innerHTML = maximizeSvg;
+          fullscreenBtn.setAttribute("aria-label", "Full screen");
+          fullscreenBtn.setAttribute("title", "Full screen");
+        }
+        messagesInner.style.maxWidth = "100%";
+        messagesInner.style.margin = "0";
+        footerInner.style.maxWidth = "100%";
+        footerInner.style.margin = "0";
+        branding.style.maxWidth = "100%";
+        branding.style.margin = "6px auto";
+      }
+    }
+
+    if (fullscreenBtn) {
+      fullscreenBtn.onclick = function (e) {
+        e.stopPropagation();
+        setFullscreen(!isFullscreen);
+        setTimeout(function () {
+          input.focus();
+        }, 50);
+      };
+    }
+
+    // Escape key listener to exit fullscreen
+    window.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && isOpen && isFullscreen) {
+        setFullscreen(false);
+      }
+    });
 
     // Safe mount into document body
     function mount() {
@@ -271,6 +421,9 @@
     launcher.onclick = function () {
       isOpen = !isOpen;
       chatWindow.style.display = isOpen ? "flex" : "none";
+      if (!isOpen && isFullscreen) {
+        setFullscreen(false);
+      }
       if (isOpen) {
         setTimeout(function () {
           input.focus();
@@ -278,9 +431,11 @@
       }
     };
 
-    var closeBtn = header.querySelector("#inno-chat-close-btn");
     if (closeBtn) {
       closeBtn.onclick = function () {
+        if (isFullscreen) {
+          setFullscreen(false);
+        }
         isOpen = false;
         chatWindow.style.display = "none";
       };
@@ -353,6 +508,10 @@
           function readChunk() {
             return reader.read().then(function (result) {
               if (result.done) {
+                if (!responseText.trim()) {
+                  assistantBubble.innerHTML =
+                    "Sorry, no response was generated. Please try again or check your account credits.";
+                }
                 messagesArea.scrollTop = messagesArea.scrollHeight;
                 return;
               }
@@ -518,7 +677,7 @@
         bubble.innerHTML = renderMarkdown(content);
       }
       msg.appendChild(bubble);
-      messagesArea.appendChild(msg);
+      messagesInner.appendChild(msg);
       messagesArea.scrollTop = messagesArea.scrollHeight;
       return msg;
     }
@@ -539,7 +698,7 @@
       bubble.textContent = "Typing...";
 
       msg.appendChild(bubble);
-      messagesArea.appendChild(msg);
+      messagesInner.appendChild(msg);
       messagesArea.scrollTop = messagesArea.scrollHeight;
       return msg;
     }
