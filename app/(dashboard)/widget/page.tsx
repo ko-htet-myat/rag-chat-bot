@@ -5,7 +5,7 @@ import type { Metadata } from "next";
 import { auth } from "@/lib/auth";
 import { getUserBots, getOrCreateWidgetConfig } from "@/features/widget";
 import { WidgetView } from "@/features/widget/components/widget-view";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 
 export const metadata: Metadata = {
   title: "Website Widget",
@@ -30,9 +30,9 @@ export default async function WidgetPage({ searchParams }: WidgetPageProps) {
 
   if (bots.length === 0) {
     return (
-      <div className="w-full max-w-5xl mx-auto">
+      <div className="mx-auto w-full max-w-7xl space-y-6">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Website Widget
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -40,10 +40,10 @@ export default async function WidgetPage({ searchParams }: WidgetPageProps) {
           </p>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-center rounded-2xl border border-dashed border-border/80 bg-card/30 p-12 text-center">
-          <div className="flex size-14 items-center justify-center rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-4">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-card p-12 text-center shadow-xs">
+          <div className="flex size-12 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary mb-4">
             <svg
-              className="size-7"
+              className="size-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -56,22 +56,20 @@ export default async function WidgetPage({ searchParams }: WidgetPageProps) {
               />
             </svg>
           </div>
-          <h3 className="text-lg font-semibold text-foreground">
+          <h3 className="text-base font-semibold text-foreground">
             No bots created yet
           </h3>
-          <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
+          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
             You need at least one bot before configuring and deploying your
             website chat widget.
           </p>
-          <div className="mt-6">
-            <Link
-              href="/bots/create"
-              className={buttonVariants({
-                className: "bg-indigo-600 hover:bg-indigo-500 text-white",
-              })}
+          <div className="mt-5">
+            <Button
+              render={<Link href="/bots/create" />}
+              nativeButton={false}
             >
               Create your first bot
-            </Link>
+            </Button>
           </div>
         </div>
       </div>

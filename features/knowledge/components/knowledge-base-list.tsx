@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Loading01Icon, Plus, Trash } from "@hugeicons/core-free-icons";
 
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,9 +57,9 @@ export function KnowledgeBaseList({ knowledgeBases }: KnowledgeBaseListProps) {
   };
 
   return (
-    <div className="">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       {/* Page Header */}
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             Knowledge Base
@@ -68,13 +69,13 @@ export function KnowledgeBaseList({ knowledgeBases }: KnowledgeBaseListProps) {
           </p>
         </div>
 
-        <Link
-          href="/knowledge/create"
-          className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-xs transition-colors hover:bg-indigo-500"
+        <Button
+          render={<Link href="/knowledge/create" />}
+          nativeButton={false}
         >
-          <HugeiconsIcon icon={Plus} size={15} />
+          <HugeiconsIcon icon={Plus} size={16} />
           Add Knowledge Base
-        </Link>
+        </Button>
       </div>
 
       {/* Grid of Knowledge Bases */}

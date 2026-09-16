@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
   ArrowLeft01Icon,
@@ -15,8 +15,8 @@ interface ConversationDetailProps {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-xl bg-card px-4 py-3 ring-1 ring-border">
-      <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+    <div className="rounded-xl border border-border bg-card p-4 shadow-xs">
+      <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
         {label}
       </p>
       <p className="mt-1 text-lg font-semibold text-foreground">{value}</p>
@@ -117,20 +117,22 @@ export function ConversationDetail({ data }: ConversationDetailProps) {
   const visibleMessages = messages.filter((m) => m.role !== "system");
 
   return (
-    <div className="mx-auto w-full max-w-300">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       {/* Back link */}
-      <Link
-        href="/conversations"
-        className="mb-6 inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
-      >
-        <HugeiconsIcon icon={ArrowLeft01Icon} size={12} />
-        All Conversations
-      </Link>
+      <div>
+        <Link
+          href="/conversations"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <HugeiconsIcon icon={ArrowLeft01Icon} size={14} />
+          All Conversations
+        </Link>
+      </div>
 
       {/* Header */}
-      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             {conversation.title}
           </h1>
           <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground">
@@ -148,7 +150,7 @@ export function ConversationDetail({ data }: ConversationDetailProps) {
       </div>
 
       {/* Stats */}
-      <div className="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         <StatCard label="Total Messages" value={stats.totalMessages} />
         <StatCard label="User Messages" value={stats.userMessages} />
         <StatCard label="Bot Replies" value={stats.assistantMessages} />
@@ -161,7 +163,7 @@ export function ConversationDetail({ data }: ConversationDetailProps) {
       </div>
 
       {/* Message thread */}
-      <div className="rounded-xl bg-muted/20 ring-1 ring-border">
+      <div className="rounded-xl border border-border bg-card shadow-xs">
         <div className="border-b border-border px-5 py-3">
           <p className="text-xs font-medium text-muted-foreground">
             {visibleMessages.length} messages

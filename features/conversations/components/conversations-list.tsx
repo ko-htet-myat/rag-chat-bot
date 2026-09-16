@@ -83,10 +83,10 @@ export function ConversationsList({ data }: ConversationsListProps) {
   }
 
   return (
-    <div className="">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
           Conversations
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
@@ -95,12 +95,12 @@ export function ConversationsList({ data }: ConversationsListProps) {
       </div>
 
       {/* Filter toolbar */}
-      <form className="mb-6 flex gap-3">
+      <form className="flex gap-3">
         {/* Search */}
         <div className="relative flex-1">
           <HugeiconsIcon
             icon={Search01Icon}
-            size={12}
+            size={16}
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
           />
           <Input

@@ -91,7 +91,7 @@ export default async function KnowledgeDetailPage({
   const totalChunks = formattedDocs.reduce((sum, d) => sum + d.chunksCount, 0);
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 sm:py-8 space-y-8">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       {/* Back button */}
       <div>
         <Link
@@ -106,8 +106,8 @@ export default async function KnowledgeDetailPage({
       {/* Header section */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex items-center gap-4">
-          <div className="flex size-14 shrink-0 items-center justify-center rounded-2xl border border-indigo-500/20 bg-indigo-500/10 text-indigo-400">
-            <HugeiconsIcon icon={Book02Icon} size={26} />
+          <div className="flex size-12 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary">
+            <HugeiconsIcon icon={Book02Icon} size={24} />
           </div>
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -141,9 +141,9 @@ export default async function KnowledgeDetailPage({
 
       {/* Quick stats */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card className="rounded-xl border-border/70 bg-card/60 p-4">
+        <Card className="rounded-xl border-border bg-card p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-indigo-500/10 text-indigo-400">
+            <div className="flex size-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
               <HugeiconsIcon icon={File01Icon} size={16} />
             </div>
             <div>
@@ -158,9 +158,9 @@ export default async function KnowledgeDetailPage({
           </div>
         </Card>
 
-        <Card className="rounded-xl border-border/70 bg-card/60 p-4">
+        <Card className="rounded-xl border-border bg-card p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-emerald-500/10 text-emerald-400">
+            <div className="flex size-9 items-center justify-center rounded-lg border border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <HugeiconsIcon icon={Briefcase01Icon} size={16} />
             </div>
             <div>
@@ -172,9 +172,9 @@ export default async function KnowledgeDetailPage({
           </div>
         </Card>
 
-        <Card className="rounded-xl border-border/70 bg-card/60 p-4">
+        <Card className="rounded-xl border-border bg-card p-4 shadow-xs">
           <div className="flex items-center gap-3">
-            <div className="flex size-9 items-center justify-center rounded-lg bg-blue-500/10 text-blue-400">
+            <div className="flex size-9 items-center justify-center rounded-lg border border-border bg-secondary text-foreground">
               <HugeiconsIcon icon={Clock01Icon} size={16} />
             </div>
             <div>

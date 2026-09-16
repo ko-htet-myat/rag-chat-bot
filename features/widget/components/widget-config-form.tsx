@@ -7,7 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { NativeSelect } from "@/components/ui/native-select";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import type { BotOption } from "../types";
 import { cn } from "@/lib/utils";
 
@@ -79,7 +79,7 @@ export function WidgetConfigForm({
   return (
     <form
       onSubmit={onSubmit}
-      className="flex flex-col rounded-xl border border-border/70 bg-card/60 p-5 sm:p-6 shadow-xs space-y-6"
+      className="flex flex-col rounded-xl border border-border bg-card p-5 sm:p-6 shadow-xs space-y-6"
     >
       <h2 className="text-base font-semibold text-foreground">Configuration</h2>
 
@@ -116,12 +116,12 @@ export function WidgetConfigForm({
           value={selectedBotId}
           onChange={(e) => onBotChange(e.target.value)}
           disabled={isExecuting || bots.length === 0}
-          className="w-full bg-[#0e101a] border-border/70 text-sm"
+          className="w-full"
         >
           {bots.map((bot) => (
-            <option key={bot.id} value={bot.id} className="bg-[#161828] text-foreground">
+            <NativeSelectOption key={bot.id} value={bot.id}>
               {bot.name}
-            </option>
+            </NativeSelectOption>
           ))}
         </NativeSelect>
       </div>
@@ -140,7 +140,7 @@ export function WidgetConfigForm({
           onChange={(e) => onDisplayNameChange(e.target.value)}
           placeholder="Acme Support"
           disabled={isExecuting}
-          className="bg-[#0e101a] border-border/70 text-sm"
+          className="text-sm"
         />
       </div>
 
@@ -158,7 +158,7 @@ export function WidgetConfigForm({
           onChange={(e) => onWelcomeMessageChange(e.target.value)}
           placeholder="Hi there! How can I help you today? 👋"
           disabled={isExecuting}
-          className="bg-[#0e101a] border-border/70 text-sm"
+          className="text-sm"
         />
       </div>
 
@@ -166,23 +166,6 @@ export function WidgetConfigForm({
       <div className="space-y-2">
         <label className="text-xs font-medium text-muted-foreground">Position</label>
         <div className="grid grid-cols-2 gap-3">
-          {/* Bottom Right */}
-          <button
-            type="button"
-            onClick={() => onPositionChange("bottom-right")}
-            className={cn(
-              "flex items-center justify-center gap-2 rounded-lg border py-2.5 px-4 text-xs sm:text-sm font-medium transition-all",
-              position === "bottom-right"
-                ? "border-indigo-500 bg-indigo-500/10 text-white ring-1 ring-indigo-500/30"
-                : "border-border/70 bg-[#0e101a] text-muted-foreground hover:bg-[#141624] hover:text-foreground",
-            )}
-          >
-            {position === "bottom-right" && (
-              <HugeiconsIcon icon={Tick01Icon} size={14} className="text-indigo-400" />
-            )}
-            Bottom Right
-          </button>
-
           {/* Bottom Left */}
           <button
             type="button"
@@ -190,14 +173,31 @@ export function WidgetConfigForm({
             className={cn(
               "flex items-center justify-center gap-2 rounded-lg border py-2.5 px-4 text-xs sm:text-sm font-medium transition-all",
               position === "bottom-left"
-                ? "border-indigo-500 bg-indigo-500/10 text-white ring-1 ring-indigo-500/30"
-                : "border-border/70 bg-[#0e101a] text-muted-foreground hover:bg-[#141624] hover:text-foreground",
+                ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30"
+                : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
             )}
           >
             {position === "bottom-left" && (
-              <HugeiconsIcon icon={Tick01Icon} size={14} className="text-indigo-400" />
+              <HugeiconsIcon icon={Tick01Icon} size={14} className="text-primary" />
             )}
             Bottom Left
+          </button>
+
+          {/* Bottom Right */}
+          <button
+            type="button"
+            onClick={() => onPositionChange("bottom-right")}
+            className={cn(
+              "flex items-center justify-center gap-2 rounded-lg border py-2.5 px-4 text-xs sm:text-sm font-medium transition-all",
+              position === "bottom-right"
+                ? "border-primary bg-primary/10 text-primary ring-1 ring-primary/30"
+                : "border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground",
+            )}
+          >
+            {position === "bottom-right" && (
+              <HugeiconsIcon icon={Tick01Icon} size={14} className="text-primary" />
+            )}
+            Bottom Right
           </button>
         </div>
       </div>
@@ -210,7 +210,7 @@ export function WidgetConfigForm({
           <div
             onClick={() => colorInputRef.current?.click()}
             title="Choose theme color"
-            className="size-10 shrink-0 cursor-pointer rounded-lg border border-white/10 shadow-sm transition-transform hover:scale-105"
+            className="size-10 shrink-0 cursor-pointer rounded-lg border border-border shadow-xs transition-transform hover:scale-105"
             style={{ backgroundColor: themeColor }}
           >
             <input
@@ -228,7 +228,7 @@ export function WidgetConfigForm({
             onChange={handleHexChange}
             placeholder="#6366f1"
             disabled={isExecuting}
-            className="font-mono bg-[#0e101a] border-border/70 text-sm tracking-wide"
+            className="font-mono text-sm tracking-wide"
           />
         </div>
       </div>
@@ -241,7 +241,7 @@ export function WidgetConfigForm({
         >
           Allowed Origins
         </label>
-        <p className="text-xs text-muted-foreground/80">
+        <p className="text-xs text-muted-foreground">
           List of website origins allowed to embed this widget. Leave empty to
           allow all origins. Supports wildcards (e.g. *.example.com). localhost
           is always allowed.
@@ -259,14 +259,14 @@ export function WidgetConfigForm({
             }}
             placeholder="https://example.com"
             disabled={isExecuting}
-            className="bg-[#0e101a] border-border/70 text-sm"
+            className="text-sm"
           />
           <Button
             type="button"
             variant="outline"
             onClick={addOrigin}
             disabled={isExecuting || !originInput.trim()}
-            className="shrink-0 bg-[#0e101a] border-border/70 text-muted-foreground hover:text-foreground hover:bg-[#141624]"
+            className="shrink-0"
           >
             Add
           </Button>
@@ -274,14 +274,14 @@ export function WidgetConfigForm({
         {allowedOrigins.length > 0 && (
           <div className="flex flex-wrap gap-2">
             {allowedOrigins.map((origin) => (
-              <Badge key={origin} variant="outline">
+              <Badge key={origin} variant="outline" className="gap-1">
                 {origin}
                 <button
                   type="button"
                   onClick={() => removeOrigin(origin)}
                   disabled={isExecuting}
                   aria-label={`Remove ${origin}`}
-                  className="ml-1 cursor-pointer text-muted-foreground transition-colors hover:text-destructive disabled:cursor-not-allowed"
+                  className="cursor-pointer text-muted-foreground transition-colors hover:text-destructive disabled:cursor-not-allowed"
                 >
                   <span className="sr-only">Remove {origin}</span>
                   <HugeiconsIcon icon={Cancel01Icon} size={12} className="pointer-events-none" />
@@ -297,7 +297,7 @@ export function WidgetConfigForm({
         <Button
           type="submit"
           disabled={isExecuting}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium px-5 py-2.5 rounded-lg shadow-sm w-auto"
+          className="font-medium px-5"
         >
           {isExecuting ? "Saving..." : "Save Configuration"}
         </Button>

@@ -1,5 +1,5 @@
 import React from "react";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
 interface MetricCardProps {
   label: string;
@@ -21,15 +21,15 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        "flex flex-col justify-between rounded-2xl border border-border/60 bg-card/40 p-5 backdrop-blur-xs transition-colors hover:border-border/80",
+        "flex flex-col justify-between rounded-xl border border-border bg-card p-5 shadow-xs transition-colors hover:border-border/80",
         className,
       )}
     >
       <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
+        <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
           {label}
         </span>
-        <div className="flex size-9 items-center justify-center rounded-lg border border-indigo-500/20 bg-indigo-500/10 text-indigo-400">
+        <div className="flex size-9 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-primary">
           {icon}
         </div>
       </div>
@@ -42,7 +42,7 @@ export function MetricCard({
           className={cn(
             "mt-2 text-xs font-medium",
             subtextColor === "success"
-              ? "text-emerald-400"
+              ? "text-emerald-600 dark:text-emerald-400"
               : "text-muted-foreground",
           )}
         >

@@ -11,19 +11,19 @@ export function RecentConversationsCard({
   conversations,
 }: RecentConversationsCardProps) {
   return (
-    <div className="flex flex-col rounded-2xl border border-border/60 bg-card/40 p-6 backdrop-blur-xs">
+    <div className="flex flex-col rounded-xl border border-border bg-card p-6 shadow-xs">
       <div className="flex items-center justify-between">
         <h2 className="text-base font-semibold text-foreground">
           Recent Conversations
         </h2>
         <Link
           href="/conversations"
-          className="group inline-flex items-center gap-1 text-xs font-medium text-indigo-400 hover:text-indigo-300 transition-colors"
+          className="group inline-flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 transition-colors"
         >
           <span>View all</span>
           <HugeiconsIcon
             icon={ArrowRight01Icon}
-            size={12}
+            size={14}
             className="transition-transform group-hover:translate-x-0.5"
           />
         </Link>
@@ -31,7 +31,7 @@ export function RecentConversationsCard({
 
       <div className="mt-5 flex-1">
         {conversations.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border/60 p-8 text-center">
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border p-8 text-center">
             <p className="text-sm font-medium text-muted-foreground">
               No conversations yet
             </p>
@@ -40,7 +40,7 @@ export function RecentConversationsCard({
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-border/40">
+          <div className="divide-y divide-border/60">
             {conversations.map((conv) => (
               <Link
                 key={conv.id}
@@ -48,14 +48,14 @@ export function RecentConversationsCard({
                 className="group block py-3.5 first:pt-0 last:pb-0 transition-colors"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-xs font-semibold text-indigo-400 transition-colors group-hover:text-indigo-300">
+                  <span className="truncate text-xs font-semibold text-primary transition-colors group-hover:text-primary/80">
                     {conv.botName}
                   </span>
                   <span className="shrink-0 text-xs text-muted-foreground">
                     {conv.timeDisplay}
                   </span>
                 </div>
-                <p className="mt-1 line-clamp-1 text-sm font-medium text-foreground transition-colors group-hover:text-foreground/90">
+                <p className="mt-1 line-clamp-1 text-sm font-medium text-foreground transition-colors group-hover:text-foreground/80">
                   {conv.lastMessageSnippet}
                 </p>
               </Link>

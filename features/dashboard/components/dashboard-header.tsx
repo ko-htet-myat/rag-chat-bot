@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Plus } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import { buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 
 export function DashboardHeader() {
   return (
@@ -16,16 +16,10 @@ export function DashboardHeader() {
       </div>
 
       <div>
-        <Link
-          href="/bots/create"
-          className={buttonVariants({
-            className:
-              "inline-flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-indigo-500 transition-colors",
-          })}
-        >
+        <Button render={<Link href="/bots/create" />} nativeButton={false}>
           <HugeiconsIcon icon={Plus} size={16} strokeWidth={2.5} />
           <span>Create Bot</span>
-        </Link>
+        </Button>
       </div>
     </div>
   );

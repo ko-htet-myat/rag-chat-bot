@@ -88,7 +88,7 @@ export function WidgetView({
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-8">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       {/* Page Title & Subtitle */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">

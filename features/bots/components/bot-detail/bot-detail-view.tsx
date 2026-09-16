@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 
 import type { BotDetailData } from "@/features/bots/queries/bot-detail.query";
 import { BotDetailHeader } from "./bot-detail-header";
@@ -42,7 +42,7 @@ export function BotDetailView({ data }: BotDetailViewProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 px-2 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       {/* Header */}
       <BotDetailHeader
         bot={data.bot}
@@ -68,7 +68,7 @@ export function BotDetailView({ data }: BotDetailViewProps) {
               >
                 {tab.label}
                 {isActive && (
-                  <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-indigo-500" />
+                  <span className="absolute bottom-0 left-0 right-0 h-0.5 rounded-full bg-primary" />
                 )}
               </button>
             );

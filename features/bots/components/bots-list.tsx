@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { cn } from "cn";
+import { cn } from "@/lib/utils";
 import { useAction } from "next-safe-action/hooks";
 import { toast } from "sonner";
 
@@ -71,11 +71,11 @@ export function BotsList({ bots }: BotsListProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-300">
+    <div className="mx-auto w-full max-w-7xl space-y-6">
       {/* Header */}
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
             My Bots
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
@@ -91,11 +91,11 @@ export function BotsList({ bots }: BotsListProps) {
               className={cn(
                 "rounded-md p-1.5 transition-colors",
                 view === "grid"
-                  ? "bg-card text-foreground"
+                  ? "bg-card text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <HugeiconsIcon icon={Grid} size={12} />
+              <HugeiconsIcon icon={Grid} size={16} />
             </button>
             <button
               type="button"
@@ -104,15 +104,15 @@ export function BotsList({ bots }: BotsListProps) {
               className={cn(
                 "rounded-md p-1.5 transition-colors",
                 view === "list"
-                  ? "bg-card text-foreground"
+                  ? "bg-card text-foreground shadow-xs"
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <HugeiconsIcon icon={List} size={12} />
+              <HugeiconsIcon icon={List} size={16} />
             </button>
           </div>
           <Button render={<Link href="/bots/create" />} nativeButton={false}>
-            <HugeiconsIcon icon={Plus} size={12} />
+            <HugeiconsIcon icon={Plus} size={16} />
             Create Bot
           </Button>
         </div>

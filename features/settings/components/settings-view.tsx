@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { ProfileSettingsCard } from "./profile-settings-card";
 import { SecuritySettingsCard } from "./security-settings-card";
@@ -15,7 +15,7 @@ interface SettingsViewProps {
 
 export function SettingsView({ user }: SettingsViewProps) {
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-8">
+    <div className="mx-auto w-full max-w-4xl space-y-6">
       {/* Page Header */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
