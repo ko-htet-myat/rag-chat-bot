@@ -5,6 +5,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { env } from "@/config/env";
 import Image from "next/image";
 
 export function TeamSwitcher() {
@@ -25,7 +26,7 @@ export function TeamSwitcher() {
             height={32}
           />
           <div className="grid flex-1 text-left text-sm leading-tight">
-            <span className="truncate font-medium">Inno Chat Bot</span>
+            <span className="truncate font-medium">{env.title}</span>
             <span className="truncate text-xs">Enterprise</span>
           </div>
         </SidebarMenuButton>
