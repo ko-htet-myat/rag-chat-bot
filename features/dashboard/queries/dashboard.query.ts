@@ -106,8 +106,9 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
         knowledgeDocsCount: 0,
         knowledgeBasesCount: 0,
         isWidgetActive: false,
-        widgetStatusText: "Inactive",
-        widgetSubtext: "Not deployed",
+        activeWidgetsCount: 0,
+        widgetStatusText: "0",
+        widgetSubtext: "None deployed",
       },
       recentBots: [],
       recentConversations: [],
@@ -170,7 +171,8 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
   }
 
   // 4. Widget status
-  const isWidgetActive = userBots.some((b) => b.widgetEnabled === true);
+  const activeWidgetsCount = userBots.filter((b) => b.widgetEnabled === true).length;
+  const isWidgetActive = activeWidgetsCount > 0;
 
   // 5. Recent Bots
   const recentBots: RecentBotItem[] = userBots
@@ -230,8 +232,12 @@ export async function getDashboardData(userId: string): Promise<DashboardData> {
       knowledgeDocsCount,
       knowledgeBasesCount,
       isWidgetActive,
-      widgetStatusText: isWidgetActive ? "Active" : "Inactive",
-      widgetSubtext: isWidgetActive ? "Deployed" : "Not deployed",
+      activeWidgetsCount,
+      widgetStatusText: activeWidgetsCount.toString(),
+      widgetSubtext:
+        activeWidgetsCount > 0
+          ? `${activeWidgetsCount} of ${totalBots} deployed`
+          : "None deployed",
     },
     recentBots,
     recentConversations,

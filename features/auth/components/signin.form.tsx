@@ -60,6 +60,7 @@ export function SignInForm({
       }
 
       toast.success("Signed in successfully");
+      form.reset();
       router.push(callbackURL);
       router.refresh();
     } catch {

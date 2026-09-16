@@ -13,6 +13,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import { MENUS } from "../menus";
+import { Suspense } from "react";
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
@@ -22,7 +23,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         {MENUS.map((menu) => (
-          <NavMain menu={menu} key={menu.title} />
+          <Suspense key={menu.title} fallback={null}>
+            <NavMain menu={menu} />
+          </Suspense>
         ))}
       </SidebarContent>
       <SidebarFooter>

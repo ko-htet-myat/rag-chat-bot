@@ -7,7 +7,8 @@ export interface DashboardMetrics {
   knowledgeDocsCount: number;
   knowledgeBasesCount: number;
   isWidgetActive: boolean;
-  widgetStatusText: "Active" | "Inactive";
+  activeWidgetsCount: number;
+  widgetStatusText: string;
   widgetSubtext: string;
 }
 

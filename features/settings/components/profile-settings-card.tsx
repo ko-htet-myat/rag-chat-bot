@@ -32,6 +32,7 @@ export function ProfileSettingsCard({ user }: ProfileSettingsCardProps) {
     register,
     handleSubmit,
     getValues,
+    reset: resetForm,
     formState: { errors },
   } = useForm<UpdateProfileInput>({
     resolver: zodResolver(updateProfileSchema),
@@ -41,9 +42,11 @@ export function ProfileSettingsCard({ user }: ProfileSettingsCardProps) {
     },
   });
 
-  const { executeAsync, isExecuting } = useAction(updateProfileAction, {
+  const { executeAsync, isExecuting, reset: resetAction } = useAction(updateProfileAction, {
     onSuccess: () => {
       toast.success("Profile updated successfully!");
+      resetForm(getValues());
+      resetAction();
       router.refresh();
     },
     onError: ({ error }) => {
@@ -54,6 +57,9 @@ export function ProfileSettingsCard({ user }: ProfileSettingsCardProps) {
       } else {
         toast.error("Failed to update profile. Please try again.");
       }
+    },
+    onSettled: () => {
+      resetAction();
     },
   });
 

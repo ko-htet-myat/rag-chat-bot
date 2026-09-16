@@ -48,14 +48,18 @@ export function DocumentListTable({
   const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState<DocumentRowItem | null>(null);
 
-  const { executeAsync, isExecuting } = useAction(deleteDocumentAction, {
+  const { executeAsync, isExecuting, reset } = useAction(deleteDocumentAction, {
     onSuccess: () => {
       toast.success(`"${deleteTarget?.name}" deleted successfully`);
       setDeleteTarget(null);
+      reset();
       router.refresh();
     },
     onError: ({ error }) => {
       toast.error(error.serverError || "Failed to delete document.");
+    },
+    onSettled: () => {
+      reset();
     },
   });
 

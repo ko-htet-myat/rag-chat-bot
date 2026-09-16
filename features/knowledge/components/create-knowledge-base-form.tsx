@@ -79,6 +79,7 @@ export function CreateKnowledgeBaseForm({
     register,
     control,
     handleSubmit,
+    reset: resetForm,
     formState: { errors },
   } = useForm<CreateKnowledgeBaseInput>({
     resolver: zodResolver(createKnowledgeBaseSchema),
@@ -89,9 +90,15 @@ export function CreateKnowledgeBaseForm({
     },
   });
 
-  const { executeAsync, isExecuting } = useAction(createKnowledgeBaseAction, {
+  const {
+    executeAsync,
+    isExecuting,
+    reset: resetAction,
+  } = useAction(createKnowledgeBaseAction, {
     onSuccess: ({ data }) => {
       toast.success("Knowledge base created successfully!");
+      resetForm();
+      resetAction();
       if (data?.knowledgeBase?.id) {
         router.push(`/knowledge/${data.knowledgeBase.id}`);
       } else {
@@ -107,6 +114,9 @@ export function CreateKnowledgeBaseForm({
       } else {
         toast.error("Failed to create knowledge base. Please try again.");
       }
+    },
+    onSettled: () => {
+      resetAction();
     },
   });
 

@@ -49,13 +49,13 @@ interface ConversationsListProps {
 }
 
 export function ConversationsList({ data }: ConversationsListProps) {
-  const { register, getValues } = useForm<FilterValues>({
+  const { register, watch } = useForm<FilterValues>({
     resolver: zodResolver(filterSchema),
     defaultValues: { search: "", botId: "all" },
   });
 
-  const search = getValues("search");
-  const botId = getValues("botId");
+  const search = watch("search") ?? "";
+  const botId = watch("botId") ?? "all";
 
   let items = data.conversations;
 
@@ -95,7 +95,7 @@ export function ConversationsList({ data }: ConversationsListProps) {
       </div>
 
       {/* Filter toolbar */}
-      <form className="flex gap-3">
+      <form className="flex gap-3" onSubmit={(e) => e.preventDefault()}>
         {/* Search */}
         <div className="relative flex-1">
           <HugeiconsIcon

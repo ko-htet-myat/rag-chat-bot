@@ -47,9 +47,10 @@ export function WidgetView({
     });
   };
 
-  const { executeAsync, isExecuting } = useAction(saveWidgetConfigAction, {
+  const { executeAsync, isExecuting, reset } = useAction(saveWidgetConfigAction, {
     onSuccess: () => {
       toast.success("Widget configuration saved!");
+      reset();
       router.refresh();
     },
     onError: ({ error }) => {
@@ -60,6 +61,9 @@ export function WidgetView({
       } else {
         toast.error("Failed to save configuration.");
       }
+    },
+    onSettled: () => {
+      reset();
     },
   });
 

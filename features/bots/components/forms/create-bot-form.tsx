@@ -38,9 +38,11 @@ export function CreateBotForm() {
     },
   });
 
-  const { executeAsync, isExecuting } = useAction(createBotAction, {
+  const { executeAsync, isExecuting, reset } = useAction(createBotAction, {
     onSuccess: () => {
       toast.success("Bot created successfully!");
+      form.reset();
+      reset();
       router.push("/bots");
       router.refresh();
     },
@@ -52,6 +54,9 @@ export function CreateBotForm() {
       } else {
         toast.error("Failed to create bot. Please try again.");
       }
+    },
+    onSettled: () => {
+      reset();
     },
   });
 

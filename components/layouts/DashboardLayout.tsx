@@ -7,6 +7,7 @@ import {
 } from "@/components/ui/sidebar";
 import { DynamicBreadcrumbs } from "@/components/layouts/dynamic-breadcrumbs";
 import { ThemeToggle } from "@/components/layouts/theme-toggle";
+import { Suspense } from "react";
 
 export default function DashboardLayout({
   children,
@@ -25,7 +26,9 @@ export default function DashboardLayout({
               className="h-4 data-[orientation=vertical]:h-4"
             />
             <div className="min-w-0 overflow-hidden">
-              <DynamicBreadcrumbs />
+              <Suspense fallback={<div className="h-4 w-32 animate-pulse rounded bg-muted" />}>
+                <DynamicBreadcrumbs />
+              </Suspense>
             </div>
           </div>
           <div className="flex items-center gap-2">

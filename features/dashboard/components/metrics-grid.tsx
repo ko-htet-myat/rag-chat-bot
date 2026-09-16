@@ -53,15 +53,15 @@ export function MetricsGrid({ metrics }: MetricsGridProps) {
       <MetricCard
         label="WIDGET STATUS"
         value={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span
               className={`size-2.5 rounded-full ${
                 metrics.isWidgetActive
-                  ? "bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]"
+                  ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]"
                   : "bg-muted-foreground/40"
               }`}
             />
-            <span>{metrics.widgetStatusText}</span>
+            <span>{metrics.activeWidgetsCount}</span>
           </div>
         }
         subtext={metrics.widgetSubtext}

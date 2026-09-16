@@ -52,16 +52,20 @@ export function BotsList({ bots }: BotsListProps) {
   const [view, setView] = useState<"grid" | "list">("grid");
   const [deleteTarget, setDeleteTarget] = useState<BotItem | null>(null);
 
-  const { executeAsync, isExecuting } = useAction(deleteBotAction, {
+  const { executeAsync, isExecuting, reset } = useAction(deleteBotAction, {
     onSuccess: () => {
       toast.success(`"${deleteTarget?.name ?? "Bot"}" deleted successfully`);
       setDeleteTarget(null);
+      reset();
       router.refresh();
     },
     onError: ({ error }) => {
       toast.error(
         error.serverError || "Failed to delete bot. Please try again.",
       );
+    },
+    onSettled: () => {
+      reset();
     },
   });
 

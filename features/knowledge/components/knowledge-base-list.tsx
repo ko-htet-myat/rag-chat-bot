@@ -35,12 +35,13 @@ export function KnowledgeBaseList({ knowledgeBases }: KnowledgeBaseListProps) {
     null,
   );
 
-  const { executeAsync, isExecuting } = useAction(deleteKnowledgeBaseAction, {
+  const { executeAsync, isExecuting, reset } = useAction(deleteKnowledgeBaseAction, {
     onSuccess: () => {
       toast.success(
         `"${deleteTarget?.name ?? "Knowledge Base"}" deleted successfully`,
       );
       setDeleteTarget(null);
+      reset();
       router.refresh();
     },
     onError: ({ error }) => {
@@ -48,6 +49,9 @@ export function KnowledgeBaseList({ knowledgeBases }: KnowledgeBaseListProps) {
         error.serverError ||
           "Failed to delete knowledge base. Please try again.",
       );
+    },
+    onSettled: () => {
+      reset();
     },
   });
 

@@ -71,41 +71,52 @@ export function EditBotForm({ bot }: EditBotFormProps) {
 
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
 
-  const { executeAsync: executeUpdate, isExecuting: isUpdating } = useAction(
-    updateBotAction,
-    {
-      onSuccess: () => {
-        toast.success("Bot updated successfully!");
-        router.push(`/bots/${bot.id}`);
-        router.refresh();
-      },
-      onError: ({ error }) => {
-        if (error.serverError) {
-          toast.error(error.serverError);
-        } else if (error.validationErrors) {
-          toast.error("Please check the form for validation errors.");
-        } else {
-          toast.error("Failed to update bot. Please try again.");
-        }
-      },
+  const {
+    executeAsync: executeUpdate,
+    isExecuting: isUpdating,
+    reset: resetUpdate,
+  } = useAction(updateBotAction, {
+    onSuccess: () => {
+      toast.success("Bot updated successfully!");
+      form.reset(form.getValues());
+      resetUpdate();
+      router.push(`/bots/${bot.id}`);
+      router.refresh();
     },
-  );
+    onError: ({ error }) => {
+      if (error.serverError) {
+        toast.error(error.serverError);
+      } else if (error.validationErrors) {
+        toast.error("Please check the form for validation errors.");
+      } else {
+        toast.error("Failed to update bot. Please try again.");
+      }
+    },
+    onSettled: () => {
+      resetUpdate();
+    },
+  });
 
-  const { executeAsync: executeDelete, isExecuting: isDeleting } = useAction(
-    deleteBotAction,
-    {
-      onSuccess: () => {
-        toast.success(`"${bot.name}" deleted successfully!`);
-        router.push("/bots");
-        router.refresh();
-      },
-      onError: ({ error }) => {
-        toast.error(
-          error.serverError || "Failed to delete bot. Please try again.",
-        );
-      },
+  const {
+    executeAsync: executeDelete,
+    isExecuting: isDeleting,
+    reset: resetDelete,
+  } = useAction(deleteBotAction, {
+    onSuccess: () => {
+      toast.success(`"${bot.name}" deleted successfully!`);
+      resetDelete();
+      router.push("/bots");
+      router.refresh();
     },
-  );
+    onError: ({ error }) => {
+      toast.error(
+        error.serverError || "Failed to delete bot. Please try again.",
+      );
+    },
+    onSettled: () => {
+      resetDelete();
+    },
+  });
 
   const isBusy = isUpdating || isDeleting;
 
