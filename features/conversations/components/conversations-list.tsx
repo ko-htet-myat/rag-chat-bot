@@ -83,7 +83,7 @@ export function ConversationsList({ data }: ConversationsListProps) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-300 px-2 py-6 sm:px-6 sm:py-8">
+    <div className="">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-semibold tracking-tight text-foreground">

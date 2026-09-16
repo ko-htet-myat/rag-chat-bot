@@ -45,7 +45,7 @@ export default function DashboardLayout({
             </Breadcrumb>
           </div>
         </header>
-        <main className=" p-5">{children}</main>
+        <main className="p-6 lg:p-8">{children}</main>
       </SidebarInset>
     </SidebarProvider>
   );

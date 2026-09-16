@@ -40,7 +40,6 @@ export function WidgetView({
   );
   const publicKey = initialConfig.publicKey;
 
-
   const handleBotChange = (newBotId: string) => {
     setCurrentBotId(newBotId);
     startTransition(() => {
@@ -68,7 +67,9 @@ export function WidgetView({
     e.preventDefault();
 
     // Basic client validation for hex color
-    const validHex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(themeColor.trim());
+    const validHex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(
+      themeColor.trim(),
+    );
     if (!validHex) {
       toast.error("Please enter a valid hex color code (e.g. #6366f1)");
       return;
@@ -78,7 +79,8 @@ export function WidgetView({
       botId: currentBotId,
       enabled,
       displayName: displayName.trim() || "Chat Support",
-      welcomeMessage: welcomeMessage.trim() || "Hi there! How can I help you today? 👋",
+      welcomeMessage:
+        welcomeMessage.trim() || "Hi there! How can I help you today? 👋",
       position,
       themeColor: themeColor.trim(),
       allowedOrigins,
@@ -86,7 +88,7 @@ export function WidgetView({
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-8 p-4 sm:p-6 lg:p-8">
+    <div className="w-full max-w-7xl mx-auto space-y-8">
       {/* Page Title & Subtitle */}
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">

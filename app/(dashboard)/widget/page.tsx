@@ -30,7 +30,7 @@ export default async function WidgetPage({ searchParams }: WidgetPageProps) {
 
   if (bots.length === 0) {
     return (
-      <div className="w-full max-w-5xl mx-auto p-6 sm:p-10">
+      <div className="w-full max-w-5xl mx-auto">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Website Widget
@@ -60,7 +60,8 @@ export default async function WidgetPage({ searchParams }: WidgetPageProps) {
             No bots created yet
           </h3>
           <p className="mt-1.5 max-w-sm text-sm text-muted-foreground">
-            You need at least one bot before configuring and deploying your website chat widget.
+            You need at least one bot before configuring and deploying your
+            website chat widget.
           </p>
           <div className="mt-6">
             <Link

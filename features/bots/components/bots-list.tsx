@@ -21,7 +21,14 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { HugeiconsIcon } from "@hugeicons/react";
-import { Bot, Grid, List, Loading01Icon, Plus, Trash } from "@hugeicons/core-free-icons";
+import {
+  Bot,
+  Grid,
+  List,
+  Loading01Icon,
+  Plus,
+  Trash,
+} from "@hugeicons/core-free-icons";
 import { deleteBotAction } from "@/features/bots/actions/delete-bot.action";
 import { GridView } from "./bots-grid-view";
 import { ListView } from "./bots-list-view";
@@ -52,7 +59,9 @@ export function BotsList({ bots }: BotsListProps) {
       router.refresh();
     },
     onError: ({ error }) => {
-      toast.error(error.serverError || "Failed to delete bot. Please try again.");
+      toast.error(
+        error.serverError || "Failed to delete bot. Please try again.",
+      );
     },
   });
 
@@ -62,7 +71,7 @@ export function BotsList({ bots }: BotsListProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-300 px-2 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto w-full max-w-300">
       {/* Header */}
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>

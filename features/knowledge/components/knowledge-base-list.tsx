@@ -28,9 +28,7 @@ interface KnowledgeBaseListProps {
   knowledgeBases: KnowledgeBaseItem[];
 }
 
-export function KnowledgeBaseList({
-  knowledgeBases,
-}: KnowledgeBaseListProps) {
+export function KnowledgeBaseList({ knowledgeBases }: KnowledgeBaseListProps) {
   const router = useRouter();
   const [deleteTarget, setDeleteTarget] = useState<KnowledgeBaseItem | null>(
     null,
@@ -46,7 +44,8 @@ export function KnowledgeBaseList({
     },
     onError: ({ error }) => {
       toast.error(
-        error.serverError || "Failed to delete knowledge base. Please try again.",
+        error.serverError ||
+          "Failed to delete knowledge base. Please try again.",
       );
     },
   });
@@ -57,7 +56,7 @@ export function KnowledgeBaseList({
   };
 
   return (
-    <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+    <div className="">
       {/* Page Header */}
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div>

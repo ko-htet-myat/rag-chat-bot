@@ -13,13 +13,7 @@ interface ConversationDetailProps {
   data: ConversationDetailData;
 }
 
-function StatCard({
-  label,
-  value,
-}: {
-  label: string;
-  value: string | number;
-}) {
+function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
     <div className="rounded-xl bg-card px-4 py-3 ring-1 ring-border">
       <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
@@ -72,7 +66,9 @@ function MessageBubble({
         </div>
       )}
 
-      <div className={cn("flex max-w-[75%] flex-col gap-1", isUser && "items-end")}>
+      <div
+        className={cn("flex max-w-[75%] flex-col gap-1", isUser && "items-end")}
+      >
         <div
           className={cn(
             "rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
@@ -121,7 +117,7 @@ export function ConversationDetail({ data }: ConversationDetailProps) {
   const visibleMessages = messages.filter((m) => m.role !== "system");
 
   return (
-    <div className="mx-auto w-full max-w-300 px-2 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto w-full max-w-300">
       {/* Back link */}
       <Link
         href="/conversations"
@@ -158,7 +154,9 @@ export function ConversationDetail({ data }: ConversationDetailProps) {
         <StatCard label="Bot Replies" value={stats.assistantMessages} />
         <StatCard
           label="Tokens Used"
-          value={(stats.totalInputTokens + stats.totalOutputTokens).toLocaleString()}
+          value={(
+            stats.totalInputTokens + stats.totalOutputTokens
+          ).toLocaleString()}
         />
       </div>
 

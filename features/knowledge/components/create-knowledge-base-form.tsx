@@ -115,7 +115,7 @@ export function CreateKnowledgeBaseForm({
   });
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-2 py-6 sm:px-6 sm:py-8">
+    <div className="mx-auto w-full max-w-4xl">
       {/* Header — aligned with bot create form */}
       <div className="mb-6 flex flex-col gap-2">
         <Link

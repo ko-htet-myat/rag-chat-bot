@@ -11,10 +11,7 @@ import {
   createBotSchema,
   type CreateBotInput,
 } from "@/features/bots/validations";
-import {
-  POPULAR_MODELS,
-  PROMPT_PRESETS,
-} from "@/features/bots/constants";
+import { POPULAR_MODELS, PROMPT_PRESETS } from "@/features/bots/constants";
 
 import { CreateBotFormHeader } from "./create-bot-form-header";
 import { CreateBotFormFooter } from "./create-bot-form-footer";
@@ -64,11 +61,8 @@ export function CreateBotForm() {
 
   return (
     <FormProvider {...form}>
-      <div className="mx-auto w-full max-w-4xl px-2 py-6 sm:px-6 sm:py-8">
-        <CreateBotFormHeader
-          isExecuting={isExecuting}
-          onSubmit={submitForm}
-        />
+      <div className="mx-auto w-full max-w-4xl">
+        <CreateBotFormHeader isExecuting={isExecuting} onSubmit={submitForm} />
 
         <form onSubmit={submitForm} className="space-y-6">
           <GeneralInformationSection disabled={isExecuting} />
