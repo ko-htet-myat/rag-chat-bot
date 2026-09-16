@@ -14,7 +14,7 @@ export const MENUS = [
     items: [
       {
         title: "Dashboard",
-        url: "#",
+        url: "/",
         icon: <HugeiconsIcon icon={ComputerTerminalIcon} strokeWidth={2} />,
         // items: [
         //   {
