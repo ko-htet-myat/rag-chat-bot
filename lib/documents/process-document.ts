@@ -2,6 +2,16 @@
  * Utility functions for document text extraction, chunking, and embedding generation.
  */
 
+export interface DocumentTextChunk {
+  content: string;
+  metadata: {
+    chunkIndex: number;
+    heading?: string;
+    startOffset: number;
+    endOffset: number;
+  };
+}
+
 export function extractTextFromFile(
   buffer: Buffer,
   fileName: string,
@@ -54,46 +64,153 @@ export function extractTextFromFile(
 
 export function chunkText(
   text: string,
-  chunkSize = 600,
-  overlap = 100,
+  chunkSize = 1200,
+  overlap = 180,
 ): string[] {
+  return chunkDocumentText(text, chunkSize, overlap).map(
+    (chunk) => chunk.content,
+  );
+}
+
+export function chunkDocumentText(
+  text: string,
+  chunkSize = 1200,
+  overlap = 180,
+): DocumentTextChunk[] {
   const cleaned = text.replace(/\r\n/g, "\n").trim();
   if (!cleaned) return [];
 
-  const paragraphs = cleaned.split(/\n\s*\n/);
-  const chunks: string[] = [];
+  const sections = splitIntoSections(cleaned);
+  const chunks: DocumentTextChunk[] = [];
   let currentChunk = "";
+  let currentHeading: string | undefined;
+  let currentStart = 0;
 
-  for (const para of paragraphs) {
-    const trimmed = para.trim();
-    if (!trimmed) continue;
+  const pushChunk = (content: string, heading: string | undefined) => {
+    const trimmed = content.trim();
+    if (trimmed.length <= 5) return;
 
-    if (currentChunk.length + trimmed.length <= chunkSize) {
-      currentChunk += (currentChunk ? "\n\n" : "") + trimmed;
-    } else {
-      if (currentChunk) {
-        chunks.push(currentChunk);
+    const startOffset = cleaned.indexOf(trimmed, currentStart);
+    const safeStart = startOffset >= 0 ? startOffset : currentStart;
+    const endOffset = safeStart + trimmed.length;
+
+    chunks.push({
+      content: heading ? `${heading}\n\n${trimmed}` : trimmed,
+      metadata: {
+        chunkIndex: chunks.length,
+        heading,
+        startOffset: safeStart,
+        endOffset,
+      },
+    });
+
+    currentStart = endOffset;
+  };
+
+  for (const section of sections) {
+    const heading = section.heading;
+    const paragraphs = section.content
+      .split(/\n\s*\n/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    for (const para of paragraphs) {
+      if (currentHeading && heading !== currentHeading && currentChunk) {
+        pushChunk(currentChunk, currentHeading);
+        currentChunk = "";
       }
 
-      if (trimmed.length > chunkSize) {
-        let i = 0;
-        while (i < trimmed.length) {
-          const end = Math.min(i + chunkSize, trimmed.length);
-          chunks.push(trimmed.slice(i, end));
-          i += Math.max(1, chunkSize - overlap);
+      currentHeading = heading;
+
+      if (currentChunk.length + para.length <= chunkSize) {
+        currentChunk += (currentChunk ? "\n\n" : "") + para;
+        continue;
+      }
+
+      if (currentChunk) {
+        pushChunk(currentChunk, currentHeading);
+      }
+
+      if (para.length > chunkSize) {
+        for (const piece of splitLongText(para, chunkSize, overlap)) {
+          pushChunk(piece, heading);
         }
         currentChunk = "";
       } else {
-        currentChunk = trimmed;
+        currentChunk = para;
       }
     }
   }
 
   if (currentChunk.trim()) {
-    chunks.push(currentChunk.trim());
+    pushChunk(currentChunk, currentHeading);
   }
 
-  return chunks.filter((c) => c.trim().length > 5);
+  return chunks;
+}
+
+function splitIntoSections(text: string): Array<{
+  heading?: string;
+  content: string;
+}> {
+  const lines = text.split("\n");
+  const sections: Array<{ heading?: string; content: string }> = [];
+  let heading: string | undefined;
+  let body: string[] = [];
+
+  const flush = () => {
+    const content = body.join("\n").trim();
+    if (content) sections.push({ heading, content });
+    body = [];
+  };
+
+  for (const line of lines) {
+    const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      flush();
+      heading = headingMatch[2].trim();
+      continue;
+    }
+
+    body.push(line);
+  }
+
+  flush();
+  return sections.length > 0 ? sections : [{ content: text }];
+}
+
+function splitLongText(text: string, chunkSize: number, overlap: number) {
+  const chunks: string[] = [];
+  let start = 0;
+
+  while (start < text.length) {
+    const hardEnd = Math.min(start + chunkSize, text.length);
+    const softEnd = findSoftBoundary(text, start, hardEnd);
+    chunks.push(text.slice(start, softEnd).trim());
+
+    if (softEnd >= text.length) break;
+    start = Math.max(softEnd - overlap, start + 1);
+  }
+
+  return chunks;
+}
+
+function findSoftBoundary(text: string, start: number, hardEnd: number) {
+  const window = text.slice(start, hardEnd);
+  const candidates = [". ", "။", "\n", " "];
+
+  for (const marker of candidates) {
+    const index = window.lastIndexOf(marker);
+    if (index > chunkMinBoundary(window.length)) {
+      return start + index + marker.length;
+    }
+  }
+
+  return hardEnd;
+}
+
+function chunkMinBoundary(length: number) {
+  return Math.floor(length * 0.55);
 }
 
 export function formatFileSize(bytes: number | null | undefined): string {

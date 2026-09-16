@@ -9,7 +9,7 @@ import { db } from "@/db";
 import { bots, documentChunks, documents, knowledgeBases } from "@/db/schema";
 import { embedManyTexts } from "@/ai/runtime/embeddings";
 import {
-  chunkText,
+  chunkDocumentText,
   extractTextFromFile,
 } from "@/lib/documents/process-document";
 
@@ -114,25 +114,37 @@ export async function uploadDocumentAction(
 
     // 2. Extract text and split into chunks
     const rawText = extractTextFromFile(buffer, safeFileName, file.type);
-    const chunks = chunkText(rawText);
+    const chunks = chunkDocumentText(rawText);
 
     if (chunks.length === 0) {
-      chunks.push(`Document: ${safeFileName}`);
+      chunks.push({
+        content: `Document: ${safeFileName}`,
+        metadata: {
+          chunkIndex: 0,
+          startOffset: 0,
+          endOffset: safeFileName.length,
+        },
+      });
     }
 
     // 3. Generate embeddings in batch
-    const embeddings = await embedManyTexts(chunks);
+    const embeddings = await embedManyTexts(
+      chunks.map((chunk) => chunk.content),
+    );
 
     // 4. Batch insert chunks into document_chunks
-    const chunkRecords = chunks.map((chunkContent, i) => ({
+    const chunkRecords = chunks.map((chunk, i) => ({
       documentId: doc.id,
-      content: chunkContent,
+      content: chunk.content,
       chunkIndex: i,
       embedding: embeddings[i],
       metadata: {
         fileName: safeFileName,
         chunkIndex: i,
         totalChunks: chunks.length,
+        heading: chunk.metadata.heading,
+        startOffset: chunk.metadata.startOffset,
+        endOffset: chunk.metadata.endOffset,
       },
     }));
 

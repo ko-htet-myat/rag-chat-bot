@@ -1,4 +1,4 @@
-import { sql, eq, inArray } from "drizzle-orm";
+import { sql, eq, inArray, and } from "drizzle-orm";
 import { db } from "@/db";
 import { documents, knowledgeBases } from "@/db/schema";
 
@@ -7,6 +7,9 @@ export interface VectorSearchResult {
   content: string;
   documentName: string;
   similarity: number;
+  documentId?: string;
+  chunkIndex?: number;
+  heading?: string;
 }
 
 /**
@@ -41,7 +44,9 @@ export async function vectorSearch(
   const docs = await db
     .select({ id: documents.id, name: documents.name })
     .from(documents)
-    .where(inArray(documents.knowledgeBaseId, kbIds));
+    .where(
+      and(eq(documents.status, "ready"), inArray(documents.knowledgeBaseId, kbIds)),
+    );
 
   if (docs.length === 0) return [];
 
@@ -56,12 +61,16 @@ export async function vectorSearch(
     id: string;
     content: string;
     document_id: string;
+    chunk_index: number;
+    metadata: Record<string, unknown> | null;
     similarity: number;
   }>(sql`
     SELECT
       id,
       content,
       document_id,
+      chunk_index,
+      metadata,
       1 - (embedding <=> ${sql.raw(`'${embeddingLiteral}'::vector`)}) AS similarity
     FROM document_chunks
     WHERE document_id = ANY(${sql.raw(`ARRAY[${docIds.map((id) => `'${id}'`).join(",")}]::uuid[]`)})
@@ -74,6 +83,9 @@ export async function vectorSearch(
     chunkId: row.id,
     content: row.content,
     documentName: docNameMap.get(row.document_id) ?? "Unknown",
+    documentId: row.document_id,
+    chunkIndex: row.chunk_index,
+    heading: getHeading(row.metadata),
     similarity: Number(row.similarity),
   }));
 }
@@ -106,7 +118,9 @@ export async function keywordSearch(
   const docs = await db
     .select({ id: documents.id, name: documents.name })
     .from(documents)
-    .where(inArray(documents.knowledgeBaseId, kbIds));
+    .where(
+      and(eq(documents.status, "ready"), inArray(documents.knowledgeBaseId, kbIds)),
+    );
 
   if (docs.length === 0) return [];
   const docIds = docs.map((d) => d.id);
@@ -131,12 +145,16 @@ export async function keywordSearch(
     id: string;
     content: string;
     document_id: string;
+    chunk_index: number;
+    metadata: Record<string, unknown> | null;
     score: number;
   }>(sql`
     SELECT
       id,
       content,
       document_id,
+      chunk_index,
+      metadata,
       (${combinedScore}) AS score
     FROM document_chunks
     WHERE document_id = ANY(${sql.raw(`ARRAY[${docIds.map((id) => `'${id}'`).join(",")}]::uuid[]`)})
@@ -149,6 +167,9 @@ export async function keywordSearch(
     chunkId: row.id,
     content: row.content,
     documentName: docNameMap.get(row.document_id) ?? "Unknown",
+    documentId: row.document_id,
+    chunkIndex: row.chunk_index,
+    heading: getHeading(row.metadata),
     similarity: Math.min(0.7 + Number(row.score) * 0.05, 0.95),
   }));
 }
@@ -169,26 +190,51 @@ export async function hybridSearch(
     keywordSearch(botId, keywords, topK),
   ]);
 
-  const resultMap = new Map<string, VectorSearchResult>();
+  const resultMap = new Map<
+    string,
+    VectorSearchResult & { fusedScore: number }
+  >();
 
-  for (const match of vectorMatches) {
-    resultMap.set(match.chunkId, { ...match });
-  }
+  addRrfScores(resultMap, vectorMatches, 0.7);
+  addRrfScores(resultMap, keywordMatches, 0.3);
 
-  for (const match of keywordMatches) {
-    const existing = resultMap.get(match.chunkId);
-    if (existing) {
-      // Chunk matched both dense vector AND exact keyword -> strongly boost score
-      existing.similarity = Math.max(
-        existing.similarity + 0.35,
-        match.similarity,
-      );
-    } else {
-      resultMap.set(match.chunkId, match);
-    }
+  for (const [chunkId, match] of resultMap) {
+    resultMap.set(chunkId, {
+      ...match,
+      similarity: Math.min(match.similarity + match.fusedScore, 0.99),
+    });
   }
 
   return Array.from(resultMap.values())
-    .sort((a, b) => b.similarity - a.similarity)
-    .slice(0, topK);
+    .sort((a, b) => b.fusedScore - a.fusedScore || b.similarity - a.similarity)
+    .slice(0, topK)
+    .map(({ fusedScore: _fusedScore, ...result }) => result);
+}
+
+function addRrfScores(
+  resultMap: Map<string, VectorSearchResult & { fusedScore: number }>,
+  matches: VectorSearchResult[],
+  weight: number,
+) {
+  const rankConstant = 60;
+
+  matches.forEach((match, index) => {
+    const score = weight / (rankConstant + index + 1);
+    const existing = resultMap.get(match.chunkId);
+
+    if (existing) {
+      existing.fusedScore += score;
+      existing.similarity = Math.max(existing.similarity, match.similarity);
+    } else {
+      resultMap.set(match.chunkId, {
+        ...match,
+        fusedScore: score,
+      });
+    }
+  });
+}
+
+function getHeading(metadata: Record<string, unknown> | null) {
+  const heading = metadata?.heading;
+  return typeof heading === "string" && heading.trim() ? heading : undefined;
 }

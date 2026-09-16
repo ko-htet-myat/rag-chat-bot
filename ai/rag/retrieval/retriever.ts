@@ -1,4 +1,5 @@
 import { embedText } from "@/ai/runtime/embeddings";
+import { rewriteQueryForRetrieval } from "@/ai/query/rewriter";
 import {
   hybridSearch,
   type VectorSearchResult,
@@ -27,6 +28,8 @@ export interface RetrieveOptions {
   history?: ModelMessage[];
   botName?: string;
 }
+
+const RAG_DEBUG_ENABLED = process.env.RAG_DEBUG === "true";
 
 /**
  * Extracts searchable keywords from the query.
@@ -77,20 +80,6 @@ export function extractKeywords(text: string): string[] {
 }
 
 /**
- * Extracts entities and proper nouns from recent conversation turns
- * so follow-up questions (e.g. "ဘယ်လိုဆက်သွယ်ရမလဲ") retain the conversation's subject (e.g. "innovix").
- */
-function extractContextualEntities(history?: ModelMessage[]): string[] {
-  if (!history || history.length === 0) return [];
-  const recent = history
-    .slice(-4)
-    .map((m) => (typeof m.content === "string" ? m.content : ""))
-    .join(" ");
-  const latinWords = recent.match(/[a-zA-Z0-9_-]{3,}/g) || [];
-  return Array.from(new Set(latinWords.map((w) => w.toLowerCase())));
-}
-
-/**
  * Retrieves the most relevant knowledge-base chunks for a given query using Hybrid Search:
  * Dense vector embeddings + Lexical keyword matching.
  *
@@ -106,7 +95,13 @@ export async function retrieve(
   threshold = 0.5,
   options?: RetrieveOptions,
 ): Promise<VectorSearchResult[]> {
-  const isNonLatin = /[^\u0000-\u007F]/.test(query);
+  const rewritten = rewriteQueryForRetrieval({
+    query,
+    history: options?.history,
+    botName: options?.botName,
+  });
+  const retrievalQuery = rewritten.standaloneQuery;
+  const isNonLatin = /[^\u0000-\u007F]/.test(retrievalQuery);
 
   // Cross-lingual embedding naturally yields lower cosine similarity (~0.18 - 0.28).
   const effectiveFloor = isNonLatin
@@ -114,20 +109,20 @@ export async function retrieve(
     : Math.min(threshold, 0.3);
 
   // 1. Extract base keywords from current query
-  const keywords = extractKeywords(query);
+  const keywords = extractKeywords(retrievalQuery);
 
   // 2. Expand with bilingual intent synonyms (e.g. "ဆက်သွယ်" -> "contact", "phone")
   const intentKeywords: string[] = [];
   for (const [burmeseTerm, englishTerms] of Object.entries(
     BILINGUAL_INTENT_MAP,
   )) {
-    if (query.includes(burmeseTerm)) {
+    if (retrievalQuery.includes(burmeseTerm)) {
       intentKeywords.push(...englishTerms);
     }
   }
 
   // 3. Extract contextual entities from prior turns (e.g. "innovix")
-  const historyEntities = extractContextualEntities(options?.history);
+  const historyEntities = rewritten.historyEntities;
 
   // Combine keywords for lexical search with prioritized weighting:
   // - Current query words & Intent synonyms (e.g. "contact", "phone", "call") get high weight (3.0)
@@ -140,8 +135,8 @@ export async function retrieve(
   ];
 
   // 4. Enrich query for dense vector embedding
-  const enrichmentParts = [query];
-  if (historyEntities.length > 0) {
+  const enrichmentParts = [retrievalQuery];
+  if (!rewritten.isFollowUp && historyEntities.length > 0) {
     enrichmentParts.push(historyEntities.join(" "));
   }
   if (intentKeywords.length > 0) {
@@ -159,5 +154,77 @@ export async function retrieve(
     effectiveFloor,
   );
 
+  logRetrievalDebug({
+    botId,
+    originalQuery: query,
+    retrievalQuery,
+    enrichedQuery,
+    effectiveFloor,
+    topK,
+    keywords,
+    intentKeywords,
+    historyEntities,
+    isFollowUp: rewritten.isFollowUp,
+    matches,
+  });
+
   return matches;
+}
+
+function logRetrievalDebug(params: {
+  botId: string;
+  originalQuery: string;
+  retrievalQuery: string;
+  enrichedQuery: string;
+  effectiveFloor: number;
+  topK: number;
+  keywords: string[];
+  intentKeywords: string[];
+  historyEntities: string[];
+  isFollowUp: boolean;
+  matches: VectorSearchResult[];
+}) {
+  if (!RAG_DEBUG_ENABLED) return;
+
+  const {
+    botId,
+    originalQuery,
+    retrievalQuery,
+    enrichedQuery,
+    effectiveFloor,
+    topK,
+    keywords,
+    intentKeywords,
+    historyEntities,
+    isFollowUp,
+    matches,
+  } = params;
+
+  console.info("[RAG] retrieval", {
+    botId,
+    originalQuery,
+    retrievalQuery,
+    enrichedQuery,
+    isFollowUp,
+    effectiveFloor,
+    topK,
+    keywords,
+    intentKeywords,
+    historyEntities,
+    matchCount: matches.length,
+    matches: matches.map((match, index) => ({
+      rank: index + 1,
+      chunkId: match.chunkId,
+      documentId: match.documentId,
+      documentName: match.documentName,
+      chunkIndex: match.chunkIndex,
+      heading: match.heading,
+      similarity: Number(match.similarity.toFixed(4)),
+      preview: createPreview(match.content),
+    })),
+  });
+}
+
+function createPreview(content: string) {
+  return content.replace(/\s+/g, " ").trim().slice(0, 180);
 }

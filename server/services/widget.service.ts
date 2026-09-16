@@ -2,6 +2,7 @@ import { eq, and, desc } from "drizzle-orm";
 import { db } from "@/db";
 import { bots, conversations, messages, widgetConfigs } from "@/db/schema";
 import { buildRagSystemPrompt } from "@/ai/prompts/system";
+import { buildRagContext } from "@/ai/rag/context/builder";
 import { retrieve } from "@/ai/rag/retrieval/retriever";
 import { streamResponse } from "@/ai/runtime/stream";
 import { generateResponse } from "@/ai/runtime/generate";
@@ -210,7 +211,8 @@ export const WidgetService = {
       saveMessage(convId, "user", message),
     ]);
 
-    const systemPrompt = buildRagSystemPrompt(bot, chunks);
+    const ragContext = buildRagContext(chunks);
+    const systemPrompt = buildRagSystemPrompt(bot, ragContext);
     const coreMessages: ModelMessage[] = [
       ...history,
       { role: "user", content: message },
@@ -265,7 +267,8 @@ export const WidgetService = {
       saveMessage(convId, "user", message),
     ]);
 
-    const systemPrompt = buildRagSystemPrompt(bot, chunks);
+    const ragContext = buildRagContext(chunks);
+    const systemPrompt = buildRagSystemPrompt(bot, ragContext);
     const coreMessages: ModelMessage[] = [
       ...history,
       { role: "user", content: message },

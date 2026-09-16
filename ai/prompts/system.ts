@@ -19,7 +19,12 @@ export function buildSystemPrompt(bot: BotConfig): string {
  */
 export function buildRagSystemPrompt(
   bot: BotConfig,
-  chunks: Array<{ content: string; documentName: string }>,
+  chunks: Array<{
+    content: string;
+    documentName: string;
+    heading?: string;
+    similarity?: number;
+  }>,
 ): string {
   const base = buildSystemPrompt(bot);
 
@@ -44,8 +49,14 @@ KNOWLEDGE BASE ANSWER-ONLY MODE:
 
   const contextBlock = chunks
     .map(
-      (chunk, i) =>
-        `[${i + 1}] Source: ${chunk.documentName}\n${chunk.content}`,
+      (chunk, i) => {
+        const heading = chunk.heading ? `\nSection: ${chunk.heading}` : "";
+        const confidence =
+          typeof chunk.similarity === "number"
+            ? `\nRetrieval score: ${chunk.similarity.toFixed(3)}`
+            : "";
+        return `[${i + 1}] Source: ${chunk.documentName}${heading}${confidence}\n${chunk.content}`;
+      },
     )
     .join("\n\n---\n\n");
 
