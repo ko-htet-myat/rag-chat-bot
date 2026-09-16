@@ -22,6 +22,43 @@ const BILINGUAL_INTENT_MAP: Record<string, string[]> = {
   ရုံး: ["office", "building", "location", "address"],
   စျေးနှုန်း: ["price", "pricing", "cost", "fee", "rate"],
   ဝန်ဆောင်မှု: ["service", "services", "solution", "solutions"],
+  ကုမ္ပဏီ: ["company", "business", "organization"],
+  အဖွဲ့အစည်း: ["organization", "company", "team"],
+  တည်ထောင်: ["founded", "established", "started"],
+  စတင်: ["started", "launched", "founded"],
+  နှစ်: ["year", "date"],
+  အချိန်: ["hours", "time", "schedule"],
+  ဖွင့်: ["open", "opening", "available"],
+  ပိတ်: ["closed", "closing", "unavailable"],
+  နေရာ: ["location", "address", "place"],
+  ဘယ်မှာ: ["where", "location", "address"],
+  ဘယ်သူ: ["who", "person", "founder", "owner"],
+  ဘာ: ["what", "information", "details"],
+  အကျိုးကျေးဇူး: ["benefit", "advantage", "value"],
+  လုပ်ဆောင်ချက်: ["feature", "function", "capability"],
+  ရည်ရွယ်ချက်: ["purpose", "mission", "goal"],
+};
+
+const ENGLISH_TO_BURMESE_INTENT_MAP: Record<string, string[]> = {
+  contact: ["ဆက်သွယ်", "ဖုန်း", "အီးမေးလ်"],
+  phone: ["ဖုန်း", "ဆက်သွယ်"],
+  email: ["အီးမေးလ်", "ဆက်သွယ်"],
+  address: ["လိပ်စာ", "နေရာ"],
+  location: ["လိပ်စာ", "နေရာ", "ဘယ်မှာ"],
+  price: ["စျေးနှုန်း"],
+  pricing: ["စျေးနှုန်း"],
+  cost: ["စျေးနှုန်း"],
+  service: ["ဝန်ဆောင်မှု"],
+  services: ["ဝန်ဆောင်မှု"],
+  company: ["ကုမ္ပဏီ"],
+  founded: ["တည်ထောင်", "စတင်"],
+  established: ["တည်ထောင်"],
+  founder: ["ဘယ်သူ", "တည်ထောင်"],
+  year: ["နှစ်"],
+  hours: ["အချိန်", "ဖွင့်", "ပိတ်"],
+  feature: ["လုပ်ဆောင်ချက်"],
+  features: ["လုပ်ဆောင်ချက်"],
+  purpose: ["ရည်ရွယ်ချက်"],
 };
 
 export interface RetrieveOptions {
@@ -101,87 +138,257 @@ export async function retrieve(
     botName: options?.botName,
   });
   const retrievalQuery = rewritten.standaloneQuery;
-  const isNonLatin = /[^\u0000-\u007F]/.test(retrievalQuery);
-
-  // Cross-lingual embedding naturally yields lower cosine similarity (~0.18 - 0.28).
-  const effectiveFloor = isNonLatin
-    ? Math.min(threshold, 0.18)
-    : Math.min(threshold, 0.3);
-
-  // 1. Extract base keywords from current query
-  const keywords = extractKeywords(retrievalQuery);
-
-  // 2. Expand with bilingual intent synonyms (e.g. "ဆက်သွယ်" -> "contact", "phone")
-  const intentKeywords: string[] = [];
-  for (const [burmeseTerm, englishTerms] of Object.entries(
-    BILINGUAL_INTENT_MAP,
-  )) {
-    if (retrievalQuery.includes(burmeseTerm)) {
-      intentKeywords.push(...englishTerms);
-    }
-  }
-
-  // 3. Extract contextual entities from prior turns (e.g. "innovix")
   const historyEntities = rewritten.historyEntities;
+  const queryVariants = buildQueryVariants({
+    retrievalQuery,
+    historyEntities,
+    botName: options?.botName,
+    threshold,
+    isFollowUp: rewritten.isFollowUp,
+  });
 
-  // Combine keywords for lexical search with prioritized weighting:
-  // - Current query words & Intent synonyms (e.g. "contact", "phone", "call") get high weight (3.0)
-  // - Broad background entity names (e.g. "innovix" repeated on every chunk) get lower weight (1.0)
-  //   so they provide context without crowding out specific intent chunks.
-  const weightedKeywords: WeightedKeyword[] = [
-    ...keywords.map((k) => ({ term: k, weight: 3.0 })),
-    ...intentKeywords.map((k) => ({ term: k, weight: 3.0 })),
-    ...historyEntities.map((e) => ({ term: e, weight: 1.0 })),
-  ];
+  const variantMatches = await Promise.all(
+    queryVariants.map(async (variant) => {
+      const embedding = await embedText(variant.enrichedQuery);
+      const matches = await hybridSearch(
+        botId,
+        embedding,
+        variant.weightedKeywords,
+        Math.max(topK, 8),
+        variant.effectiveFloor,
+      );
 
-  // 4. Enrich query for dense vector embedding
-  const enrichmentParts = [retrievalQuery];
-  if (!rewritten.isFollowUp && historyEntities.length > 0) {
-    enrichmentParts.push(historyEntities.join(" "));
-  }
-  if (intentKeywords.length > 0) {
-    enrichmentParts.push(intentKeywords.slice(0, 3).join(" "));
-  }
-  const enrichedQuery = enrichmentParts.join(" ");
-
-  const embedding = await embedText(enrichedQuery);
-
-  const matches = await hybridSearch(
-    botId,
-    embedding,
-    weightedKeywords,
-    topK,
-    effectiveFloor,
+      return { variant, matches };
+    }),
   );
+
+  const matches = mergeAndDiversifyResults(variantMatches, topK);
 
   logRetrievalDebug({
     botId,
     originalQuery: query,
     retrievalQuery,
-    enrichedQuery,
-    effectiveFloor,
     topK,
-    keywords,
-    intentKeywords,
     historyEntities,
     isFollowUp: rewritten.isFollowUp,
+    queryVariants,
     matches,
   });
 
   return matches;
 }
 
+interface QueryVariant {
+  label: "primary" | "english-bridge" | "burmese-bridge";
+  query: string;
+  enrichedQuery: string;
+  effectiveFloor: number;
+  keywords: string[];
+  intentKeywords: string[];
+  weightedKeywords: WeightedKeyword[];
+}
+
+function buildQueryVariants(params: {
+  retrievalQuery: string;
+  historyEntities: string[];
+  botName?: string;
+  threshold: number;
+  isFollowUp: boolean;
+}): QueryVariant[] {
+  const {
+    retrievalQuery,
+    historyEntities,
+    botName,
+    threshold,
+    isFollowUp,
+  } = params;
+  const isNonLatin = /[^\u0000-\u007F]/.test(retrievalQuery);
+  const effectiveFloor = isNonLatin
+    ? Math.min(threshold, 0.18)
+    : Math.min(threshold, 0.3);
+  const keywords = extractKeywords(retrievalQuery);
+  const intentKeywords = expandIntentKeywords(retrievalQuery, isNonLatin);
+  const primaryEnrichmentParts = [retrievalQuery];
+
+  if (!isFollowUp && historyEntities.length > 0) {
+    primaryEnrichmentParts.push(historyEntities.join(" "));
+  }
+  if (intentKeywords.length > 0) {
+    primaryEnrichmentParts.push(intentKeywords.slice(0, 6).join(" "));
+  }
+
+  const variants: QueryVariant[] = [
+    {
+      label: "primary",
+      query: retrievalQuery,
+      enrichedQuery: primaryEnrichmentParts.join(" "),
+      effectiveFloor,
+      keywords,
+      intentKeywords,
+      weightedKeywords: buildWeightedKeywords(
+        keywords,
+        intentKeywords,
+        historyEntities,
+      ),
+    },
+  ];
+
+  const bridgeTerms = isNonLatin
+    ? expandMyanmarToEnglish(retrievalQuery)
+    : expandEnglishToMyanmar(retrievalQuery);
+
+  if (bridgeTerms.length > 0) {
+    const contextTerms = [
+      ...bridgeTerms,
+      ...historyEntities.filter((term) => /[a-z0-9_-]/i.test(term)),
+    ];
+    if (botName && contextTerms.length > 0) {
+      contextTerms.push(botName);
+    }
+
+    variants.push({
+      label: isNonLatin ? "english-bridge" : "burmese-bridge",
+      query: unique(contextTerms).join(" "),
+      enrichedQuery: unique([retrievalQuery, ...contextTerms]).join(" "),
+      effectiveFloor: isNonLatin ? Math.min(threshold, 0.16) : effectiveFloor,
+      keywords: unique(contextTerms),
+      intentKeywords: bridgeTerms,
+      weightedKeywords: buildWeightedKeywords(
+        unique(contextTerms),
+        bridgeTerms,
+        historyEntities,
+      ),
+    });
+  }
+
+  return variants;
+}
+
+function buildWeightedKeywords(
+  keywords: string[],
+  intentKeywords: string[],
+  historyEntities: string[],
+): WeightedKeyword[] {
+  return [
+    ...keywords.map((term) => ({ term, weight: 3.0 })),
+    ...intentKeywords.map((term) => ({ term, weight: 3.0 })),
+    ...historyEntities.map((term) => ({ term, weight: 1.0 })),
+  ];
+}
+
+function expandIntentKeywords(query: string, isNonLatin: boolean) {
+  return isNonLatin ? expandMyanmarToEnglish(query) : expandEnglishToMyanmar(query);
+}
+
+function expandMyanmarToEnglish(query: string) {
+  const terms: string[] = [];
+  for (const [burmeseTerm, englishTerms] of Object.entries(BILINGUAL_INTENT_MAP)) {
+    if (query.includes(burmeseTerm)) {
+      terms.push(...englishTerms);
+    }
+  }
+  return unique(terms);
+}
+
+function expandEnglishToMyanmar(query: string) {
+  const lowerQuery = query.toLowerCase();
+  const terms: string[] = [];
+  for (const [englishTerm, burmeseTerms] of Object.entries(
+    ENGLISH_TO_BURMESE_INTENT_MAP,
+  )) {
+    if (lowerQuery.includes(englishTerm)) {
+      terms.push(...burmeseTerms);
+    }
+  }
+  return unique(terms);
+}
+
+function mergeAndDiversifyResults(
+  variantMatches: Array<{ variant: QueryVariant; matches: VectorSearchResult[] }>,
+  topK: number,
+) {
+  const resultMap = new Map<
+    string,
+    VectorSearchResult & { score: number; queryLabels: string[] }
+  >();
+
+  for (const { variant, matches } of variantMatches) {
+    matches.forEach((match, index) => {
+      const rankBoost = 1 / (60 + index + 1);
+      const bridgeBoost = variant.label === "primary" ? 0 : 0.015;
+      const score = match.similarity + rankBoost + bridgeBoost;
+      const existing = resultMap.get(match.chunkId);
+
+      if (existing) {
+        existing.score = Math.max(existing.score, score);
+        existing.similarity = Math.max(existing.similarity, match.similarity);
+        if (!existing.queryLabels.includes(variant.label)) {
+          existing.queryLabels.push(variant.label);
+        }
+      } else {
+        resultMap.set(match.chunkId, {
+          ...match,
+          score,
+          queryLabels: [variant.label],
+        });
+      }
+    });
+  }
+
+  const ranked = Array.from(resultMap.values()).sort(
+    (a, b) => b.score - a.score || b.similarity - a.similarity,
+  );
+
+  return diversifyByDocument(ranked, Math.max(topK, 6)).map(
+    ({ score: _score, queryLabels: _queryLabels, ...result }) => result,
+  );
+}
+
+function diversifyByDocument<T extends VectorSearchResult>(
+  matches: T[],
+  limit: number,
+) {
+  const selected: T[] = [];
+  const overflow: T[] = [];
+  const counts = new Map<string, number>();
+  const maxPerDocument = 3;
+
+  for (const match of matches) {
+    const key = match.documentId ?? match.documentName;
+    const count = counts.get(key) ?? 0;
+
+    if (count >= maxPerDocument) {
+      overflow.push(match);
+      continue;
+    }
+
+    selected.push(match);
+    counts.set(key, count + 1);
+    if (selected.length >= limit) return selected;
+  }
+
+  for (const match of overflow) {
+    selected.push(match);
+    if (selected.length >= limit) break;
+  }
+
+  return selected;
+}
+
+function unique(values: string[]) {
+  return Array.from(
+    new Set(values.map((value) => value.trim()).filter(Boolean)),
+  );
+}
+
 function logRetrievalDebug(params: {
   botId: string;
   originalQuery: string;
   retrievalQuery: string;
-  enrichedQuery: string;
-  effectiveFloor: number;
   topK: number;
-  keywords: string[];
-  intentKeywords: string[];
   historyEntities: string[];
   isFollowUp: boolean;
+  queryVariants: QueryVariant[];
   matches: VectorSearchResult[];
 }) {
   if (!RAG_DEBUG_ENABLED) return;
@@ -190,13 +397,10 @@ function logRetrievalDebug(params: {
     botId,
     originalQuery,
     retrievalQuery,
-    enrichedQuery,
-    effectiveFloor,
     topK,
-    keywords,
-    intentKeywords,
     historyEntities,
     isFollowUp,
+    queryVariants,
     matches,
   } = params;
 
@@ -204,14 +408,18 @@ function logRetrievalDebug(params: {
     botId,
     originalQuery,
     retrievalQuery,
-    enrichedQuery,
     isFollowUp,
-    effectiveFloor,
     topK,
-    keywords,
-    intentKeywords,
     historyEntities,
     matchCount: matches.length,
+    queryVariants: queryVariants.map((variant) => ({
+      label: variant.label,
+      effectiveFloor: variant.effectiveFloor,
+      query: variant.query,
+      enrichedQuery: variant.enrichedQuery,
+      keywords: variant.keywords,
+      intentKeywords: variant.intentKeywords,
+    })),
     matches: matches.map((match, index) => ({
       rank: index + 1,
       chunkId: match.chunkId,

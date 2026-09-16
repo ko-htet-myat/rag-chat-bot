@@ -13,6 +13,7 @@ export interface RagContextBuildOptions {
   maxChunks?: number;
   maxCharacters?: number;
   minSimilarity?: number;
+  maxChunksPerDocument?: number;
 }
 
 const DEFAULT_MAX_CHUNKS = 6;
@@ -25,39 +26,105 @@ export function buildRagContext(
   const maxChunks = options.maxChunks ?? DEFAULT_MAX_CHUNKS;
   const maxCharacters = options.maxCharacters ?? DEFAULT_MAX_CHARACTERS;
   const minSimilarity = options.minSimilarity ?? 0;
+  const maxChunksPerDocument = options.maxChunksPerDocument ?? 3;
   const seenContent = new Set<string>();
   const context: RagContextChunk[] = [];
+  const overflow: VectorSearchResult[] = [];
+  const documentCounts = new Map<string, number>();
   let usedCharacters = 0;
 
   for (const match of matches) {
-    if (match.similarity < minSimilarity) continue;
+    const documentKey = match.documentId ?? match.documentName;
+    const documentCount = documentCounts.get(documentKey) ?? 0;
 
-    const normalized = normalizeContent(match.content);
-    if (seenContent.has(normalized)) continue;
+    if (documentCount >= maxChunksPerDocument) {
+      overflow.push(match);
+      continue;
+    }
 
-    const remaining = maxCharacters - usedCharacters;
-    if (remaining <= 0 || context.length >= maxChunks) break;
+    if (
+      tryAddContextChunk({
+        match,
+        minSimilarity,
+        maxCharacters,
+        seenContent,
+        context,
+        getUsedCharacters: () => usedCharacters,
+        setUsedCharacters: (value) => {
+          usedCharacters = value;
+        },
+      })
+    ) {
+      documentCounts.set(documentKey, documentCount + 1);
+    }
 
-    const content =
-      match.content.length > remaining
-        ? trimToBoundary(match.content, remaining)
-        : match.content;
+    if (context.length >= maxChunks) break;
+  }
 
-    if (content.trim().length <= 20) continue;
-
-    seenContent.add(normalized);
-    usedCharacters += content.length;
-    context.push({
-      chunkId: match.chunkId,
-      content,
-      documentName: match.documentName,
-      similarity: match.similarity,
-      chunkIndex: match.chunkIndex,
-      heading: match.heading,
+  for (const match of overflow) {
+    if (context.length >= maxChunks) break;
+    tryAddContextChunk({
+      match,
+      minSimilarity,
+      maxCharacters,
+      seenContent,
+      context,
+      getUsedCharacters: () => usedCharacters,
+      setUsedCharacters: (value) => {
+        usedCharacters = value;
+      },
     });
   }
 
   return context;
+}
+
+function tryAddContextChunk(params: {
+  match: VectorSearchResult;
+  minSimilarity: number;
+  maxCharacters: number;
+  seenContent: Set<string>;
+  context: RagContextChunk[];
+  getUsedCharacters: () => number;
+  setUsedCharacters: (value: number) => void;
+}) {
+  const {
+    match,
+    minSimilarity,
+    maxCharacters,
+    seenContent,
+    context,
+    getUsedCharacters,
+    setUsedCharacters,
+  } = params;
+
+  if (match.similarity < minSimilarity) return false;
+
+  const normalized = normalizeContent(match.content);
+  if (seenContent.has(normalized)) return false;
+
+  const usedCharacters = getUsedCharacters();
+  const remaining = maxCharacters - usedCharacters;
+  if (remaining <= 0) return false;
+
+  const content =
+    match.content.length > remaining
+      ? trimToBoundary(match.content, remaining)
+      : match.content;
+
+  if (content.trim().length <= 20) return false;
+
+  seenContent.add(normalized);
+  setUsedCharacters(usedCharacters + content.length);
+  context.push({
+    chunkId: match.chunkId,
+    content,
+    documentName: match.documentName,
+    similarity: match.similarity,
+    chunkIndex: match.chunkIndex,
+    heading: match.heading,
+  });
+  return true;
 }
 
 function normalizeContent(content: string) {
