@@ -3,6 +3,8 @@ import { z } from "zod";
 import { auth } from "@/lib/auth";
 import { ChatService } from "@/server/services/chat.service";
 import { consumeRateLimit, getClientAddress } from "@/server/rate-limit";
+import { toHttpError } from "@/server/http-errors";
+import { getRequestId, withRequestId } from "@/server/request-tracing";
 
 export const chatRoutes = new Hono();
 
@@ -25,20 +27,31 @@ const conversationIdSchema = z.string().uuid();
  * Zero DB calls, zero AI SDK imports, zero fetch() calls here.
  */
 chatRoutes.post("/test", async (c) => {
+  const requestId = getRequestId(c.req.raw.headers);
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
-  if (!session) return c.json({ error: "Unauthorized" }, 401);
+  if (!session) {
+    return c.json({ error: "Unauthorized", requestId }, 401, {
+      "X-Request-Id": requestId,
+    });
+  }
 
   if (
     !consumeRateLimit(
       `chat:${session.user.id}:${getClientAddress(c.req.raw.headers)}`,
     )
   ) {
-    return c.json({ error: "Too many requests" }, 429);
+    return c.json({ error: "Too many requests", requestId }, 429, {
+      "X-Request-Id": requestId,
+    });
   }
 
   const body = await c.req.json().catch(() => null);
   const parsed = chatRequestSchema.safeParse(body);
-  if (!parsed.success) return c.json({ error: "Invalid chat request" }, 400);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid chat request", requestId }, 400, {
+      "X-Request-Id": requestId,
+    });
+  }
 
   const {
     botId,
@@ -55,16 +68,22 @@ chatRoutes.post("/test", async (c) => {
         userId: session.user.id,
         message,
         conversationId,
+        requestId,
+        abortSignal: c.req.raw.signal,
       });
 
-      return c.json({
-        success: true,
-        conversationId: result.conversationId,
-        assistantMessage: {
-          id: result.assistantMessageId,
-          content: result.text,
+      return c.json(
+        {
+          success: true,
+          conversationId: result.conversationId,
+          assistantMessage: {
+            id: result.assistantMessageId,
+            content: result.text,
+          },
         },
-      });
+        200,
+        { "X-Request-Id": requestId },
+      );
     }
 
     const { response, conversationId: convId } = await ChatService.streamReply({
@@ -72,11 +91,12 @@ chatRoutes.post("/test", async (c) => {
       userId: session.user.id,
       message,
       conversationId,
+      requestId,
+      abortSignal: c.req.raw.signal,
     });
 
-    const headers = new Headers(response.headers);
+    const headers = withRequestId(response.headers, requestId);
     headers.set("X-Conversation-Id", convId);
-    headers.set("Access-Control-Expose-Headers", "X-Conversation-Id");
 
     return new Response(response.body, {
       status: response.status,
@@ -84,11 +104,19 @@ chatRoutes.post("/test", async (c) => {
       headers,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
-    if (msg === "Bot not found" || msg === "Conversation not found") {
-      return c.json({ error: msg }, 404);
-    }
-    return c.json({ error: msg }, 500);
+    const httpError = toHttpError(err);
+    console.error("Chat test request failed", {
+      requestId,
+      botId,
+      userId: session.user.id,
+      conversationId: rawConversationId,
+      error: err,
+    });
+    return c.json(
+      { error: httpError.message, code: httpError.code, requestId },
+      httpError.status,
+      { "X-Request-Id": requestId },
+    );
   }
 });
 

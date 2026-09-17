@@ -15,6 +15,8 @@ export interface SendMessageParams {
   userId: string;
   message: string;
   conversationId?: string;
+  requestId?: string;
+  abortSignal?: AbortSignal;
 }
 
 export interface SendMessageResult {
@@ -149,7 +151,14 @@ export const ChatService = {
     conversationId: string;
     userMessageId: string;
   }> {
-    const { botId, userId, message, conversationId: incomingConvId } = params;
+    const {
+      botId,
+      userId,
+      message,
+      conversationId: incomingConvId,
+      requestId,
+      abortSignal,
+    } = params;
 
     const bot = await ChatService.getBot(botId, userId);
     const convId = await getOrCreateConversation(
@@ -183,6 +192,8 @@ export const ChatService = {
       messages: coreMessages,
       temperature: bot.temperature,
       maxOutputTokens: bot.maxTokens || 1000,
+      requestId,
+      abortSignal,
       onFinish: async ({ text, inputTokens, outputTokens }) => {
         await saveMessage(
           convId,
@@ -203,7 +214,14 @@ export const ChatService = {
    * Same RAG flow as streamReply.
    */
   async generateReply(params: SendMessageParams): Promise<SendMessageResult> {
-    const { botId, userId, message, conversationId: incomingConvId } = params;
+    const {
+      botId,
+      userId,
+      message,
+      conversationId: incomingConvId,
+      requestId,
+      abortSignal,
+    } = params;
 
     const bot = await ChatService.getBot(botId, userId);
     const convId = await getOrCreateConversation(
@@ -236,6 +254,8 @@ export const ChatService = {
       messages: coreMessages,
       temperature: bot.temperature,
       maxOutputTokens: bot.maxTokens || 1000,
+      requestId,
+      abortSignal,
     });
 
     const assistantMsg = await saveMessage(

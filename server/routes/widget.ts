@@ -3,6 +3,8 @@ import { cors } from "hono/cors";
 import { z } from "zod";
 import { WidgetService } from "@/server/services/widget.service";
 import { consumeRateLimit, getClientAddress } from "@/server/rate-limit";
+import { toHttpError } from "@/server/http-errors";
+import { getRequestId, withRequestId } from "@/server/request-tracing";
 
 export const widgetRoutes = new Hono();
 
@@ -17,23 +19,31 @@ const widgetChatSchema = z.object({
 widgetRoutes.use(
   "*",
   cors({
-    origin: "*",
+    origin: (origin) => origin || null,
     allowMethods: ["GET", "POST", "OPTIONS"],
-    allowHeaders: ["Content-Type", "Authorization"],
+    allowHeaders: ["Content-Type", "Authorization", "X-Request-Id"],
+    exposeHeaders: ["X-Conversation-Id", "X-Request-Id"],
   }),
 );
 
 widgetRoutes.options(
   "*",
-  () =>
-    new Response(null, {
+  (c) => {
+    const origin = c.req.header("origin");
+    const headers: HeadersInit = {
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Request-Id",
+      "Access-Control-Expose-Headers": "X-Conversation-Id, X-Request-Id",
+      Vary: "Origin",
+    };
+
+    if (origin) headers["Access-Control-Allow-Origin"] = origin;
+
+    return new Response(null, {
       status: 204,
-      headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type, Authorization",
-      },
-    }),
+      headers,
+    });
+  },
 );
 
 /**
@@ -43,16 +53,23 @@ widgetRoutes.options(
  * Origin validation lives in the service.
  */
 widgetRoutes.get("/config", async (c) => {
+  const requestId = getRequestId(c.req.raw.headers);
   const key = c.req.query("key");
   const parsedKey = publicKeySchema.safeParse(key);
-  if (!parsedKey.success) return c.json({ error: "Invalid public key" }, 400);
+  if (!parsedKey.success) {
+    return c.json({ error: "Invalid public key", requestId }, 400, {
+      "X-Request-Id": requestId,
+    });
+  }
 
   if (
     !consumeRateLimit(
       `widget-config:${parsedKey.data}:${getClientAddress(c.req.raw.headers)}`,
     )
   ) {
-    return c.json({ error: "Too many requests" }, 429);
+    return c.json({ error: "Too many requests", requestId }, 429, {
+      "X-Request-Id": requestId,
+    });
   }
 
   try {
@@ -60,13 +77,20 @@ widgetRoutes.get("/config", async (c) => {
       parsedKey.data,
       c.req.header("origin"),
     );
-    return c.json(config);
+    return c.json(config, 200, { "X-Request-Id": requestId });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
-    if (msg === "Widget not found") return c.json({ error: msg }, 404);
-    if (msg === "Origin not allowed") return c.json({ error: msg }, 403);
-    if (msg === "Widget is disabled") return c.json({ error: msg }, 403);
-    return c.json({ error: msg }, 500);
+    const httpError = toHttpError(err);
+    console.error("Widget config request failed", {
+      requestId,
+      publicKey: parsedKey.data,
+      origin: c.req.header("origin"),
+      error: err,
+    });
+    return c.json(
+      { error: httpError.message, code: httpError.code, requestId },
+      httpError.status,
+      { "X-Request-Id": requestId },
+    );
   }
 });
 
@@ -77,9 +101,14 @@ widgetRoutes.get("/config", async (c) => {
  * Zero DB calls, zero AI SDK imports, zero OpenRouter references here.
  */
 widgetRoutes.post("/chat", async (c) => {
+  const requestId = getRequestId(c.req.raw.headers);
   const body = await c.req.json().catch(() => null);
   const parsed = widgetChatSchema.safeParse(body);
-  if (!parsed.success) return c.json({ error: "Invalid chat request" }, 400);
+  if (!parsed.success) {
+    return c.json({ error: "Invalid chat request", requestId }, 400, {
+      "X-Request-Id": requestId,
+    });
+  }
 
   const {
     publicKey,
@@ -93,7 +122,9 @@ widgetRoutes.post("/chat", async (c) => {
       `widget-chat:${publicKey}:${getClientAddress(c.req.raw.headers)}`,
     )
   ) {
-    return c.json({ error: "Too many requests" }, 429);
+    return c.json({ error: "Too many requests", requestId }, 429, {
+      "X-Request-Id": requestId,
+    });
   }
 
   try {
@@ -103,11 +134,12 @@ widgetRoutes.post("/chat", async (c) => {
         message,
         conversationId,
         requestOrigin: c.req.header("origin"),
+        requestId,
+        abortSignal: c.req.raw.signal,
       });
 
-    const headers = new Headers(response.headers);
+    const headers = withRequestId(response.headers, requestId);
     headers.set("X-Conversation-Id", responseConversationId);
-    headers.set("Access-Control-Expose-Headers", "X-Conversation-Id");
 
     return new Response(response.body, {
       status: response.status,
@@ -115,17 +147,19 @@ widgetRoutes.post("/chat", async (c) => {
       headers,
     });
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "Internal server error";
+    const httpError = toHttpError(err);
     console.error("Widget chat request failed", {
+      requestId,
       publicKey,
       messageLength: message.length,
       conversationId: incomingConversationId,
+      origin: c.req.header("origin"),
       error: err,
     });
-    if (msg === "Widget not found") return c.json({ error: msg }, 404);
-    if (msg === "Conversation not found") return c.json({ error: msg }, 404);
-    if (msg === "Origin not allowed") return c.json({ error: msg }, 403);
-    if (msg === "Widget is disabled") return c.json({ error: msg }, 403);
-    return c.json({ error: msg }, 500);
+    return c.json(
+      { error: httpError.message, code: httpError.code, requestId },
+      httpError.status,
+      { "X-Request-Id": requestId },
+    );
   }
 });

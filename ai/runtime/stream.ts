@@ -1,5 +1,6 @@
 import { streamText, createTextStreamResponse } from "ai";
 import type { ModelMessage } from "ai";
+import { createRuntimeCacheKey, getRuntimeCache, setRuntimeCache } from "./cache";
 import { getModel } from "./models";
 
 export interface StreamParams {
@@ -8,6 +9,8 @@ export interface StreamParams {
   messages: ModelMessage[];
   temperature?: number;
   maxOutputTokens?: number;
+  abortSignal?: AbortSignal;
+  requestId?: string;
   onFinish?: (params: {
     text: string;
     inputTokens?: number;
@@ -29,22 +32,55 @@ export function streamResponse(params: StreamParams): Response {
     messages,
     temperature,
     maxOutputTokens = 1000,
+    abortSignal,
+    requestId,
     onFinish,
   } = params;
+
+  const resolvedMaxOutputTokens = maxOutputTokens || 1000;
+  const cacheKey = createRuntimeCacheKey({
+    modelId,
+    systemPrompt,
+    messages,
+    temperature,
+    maxOutputTokens: resolvedMaxOutputTokens,
+  });
+  const cached = getRuntimeCache(cacheKey);
+
+  if (cached) {
+    const stream = new ReadableStream<string>({
+      async start(controller) {
+        controller.enqueue(cached.text);
+        if (onFinish) await onFinish(cached);
+        controller.close();
+      },
+    });
+
+    return createTextStreamResponse({ stream });
+  }
 
   const result = streamText({
     model: getModel(modelId),
     system: systemPrompt,
     messages,
     temperature,
-    maxOutputTokens: maxOutputTokens || 1000,
+    maxOutputTokens: resolvedMaxOutputTokens,
+    maxRetries: 2,
+    streamRetries: 1,
+    abortSignal,
+    timeout: { totalMs: 60_000, stepMs: 30_000, firstChunkMs: 15_000, chunkMs: 20_000 },
+    onError: ({ error }) => {
+      console.error("Model stream error", { requestId, modelId, error });
+    },
     onFinish: onFinish
       ? async ({ text, usage }) => {
-          await onFinish({
+          const value = {
             text,
             inputTokens: usage?.inputTokens,
             outputTokens: usage?.outputTokens,
-          });
+          };
+          setRuntimeCache(cacheKey, value);
+          await onFinish(value);
         }
       : undefined,
   });

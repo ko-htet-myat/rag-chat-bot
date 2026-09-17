@@ -6,6 +6,7 @@ import { buildRagContext } from "@/ai/rag/context/builder";
 import { retrieve } from "@/ai/rag/retrieval/retriever";
 import { streamResponse } from "@/ai/runtime/stream";
 import { generateResponse } from "@/ai/runtime/generate";
+import { isOriginAllowed } from "@/server/widget-origin";
 import type { ModelMessage } from "ai";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -15,6 +16,8 @@ export interface WidgetChatParams {
   message: string;
   conversationId?: string;
   requestOrigin?: string;
+  requestId?: string;
+  abortSignal?: AbortSignal;
 }
 
 export interface WidgetChatResult {
@@ -25,22 +28,6 @@ export interface WidgetChatResult {
 }
 
 // ─── Private helpers ──────────────────────────────────────────────────────────
-
-function isOriginAllowed(
-  allowedOrigins: string[],
-  requestOrigin: string | undefined,
-): boolean {
-  if (!allowedOrigins.length) return true;
-  if (!requestOrigin) return false;
-
-  return allowedOrigins.some(
-    (origin) =>
-      origin === requestOrigin ||
-      origin === "*" ||
-      (origin.startsWith("*.") &&
-        requestOrigin.endsWith(`.${origin.slice(2)}`)),
-  );
-}
 
 async function resolveWidget(publicKey: string) {
   const [row] = await db
@@ -192,6 +179,8 @@ export const WidgetService = {
       message,
       conversationId: incomingConvId,
       requestOrigin,
+      requestId,
+      abortSignal,
     } = params;
 
     const { bot } = await WidgetService.resolve(publicKey, requestOrigin);
@@ -224,6 +213,8 @@ export const WidgetService = {
       messages: coreMessages,
       temperature: bot.temperature,
       maxOutputTokens: bot.maxTokens || 1000,
+      requestId,
+      abortSignal,
       onFinish: async ({ text, inputTokens, outputTokens }) => {
         await saveMessage(
           convId,
@@ -248,6 +239,8 @@ export const WidgetService = {
       message,
       conversationId: incomingConvId,
       requestOrigin,
+      requestId,
+      abortSignal,
     } = params;
 
     const { bot } = await WidgetService.resolve(publicKey, requestOrigin);
@@ -280,6 +273,8 @@ export const WidgetService = {
       messages: coreMessages,
       temperature: bot.temperature,
       maxOutputTokens: bot.maxTokens || 1000,
+      requestId,
+      abortSignal,
     });
 
     const assistantMsg = await saveMessage(
