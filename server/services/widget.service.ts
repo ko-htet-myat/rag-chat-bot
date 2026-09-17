@@ -114,7 +114,13 @@ async function loadHistory(
 async function retrieveKnowledgeBase(
   botId: string,
   message: string,
-  options?: { history?: ModelMessage[]; botName?: string },
+  options?: {
+    history?: ModelMessage[];
+    botName?: string;
+    modelId?: string;
+    requestId?: string;
+    abortSignal?: AbortSignal;
+  },
 ) {
   try {
     return await retrieve(botId, message, 5, 0.5, options);
@@ -196,7 +202,13 @@ export const WidgetService = {
 
     // RAG retrieval and user message persistence run in parallel
     const [chunks, userMsg] = await Promise.all([
-      retrieveKnowledgeBase(bot.id, message, { history, botName: bot.name }),
+      retrieveKnowledgeBase(bot.id, message, {
+        history,
+        botName: bot.name,
+        modelId: bot.model,
+        requestId,
+        abortSignal,
+      }),
       saveMessage(convId, "user", message),
     ]);
 
@@ -256,7 +268,13 @@ export const WidgetService = {
 
     // RAG retrieval and user message persistence run in parallel
     const [chunks, userMsg] = await Promise.all([
-      retrieveKnowledgeBase(bot.id, message, { history, botName: bot.name }),
+      retrieveKnowledgeBase(bot.id, message, {
+        history,
+        botName: bot.name,
+        modelId: bot.model,
+        requestId,
+        abortSignal,
+      }),
       saveMessage(convId, "user", message),
     ]);
 
